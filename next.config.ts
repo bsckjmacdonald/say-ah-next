@@ -1,14 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Static HTML/JS/CSS export. `npm run build` produces a self-contained
-  // `out/` directory that can be served from any web host (Vercel, Netlify,
-  // GitHub Pages, an S3 bucket, or even `npx serve out`).
+  // Vercel runs Next.js natively — no special config needed.
   //
-  // IMPORTANT: getUserMedia requires a secure origin. The exported files
-  // need to be served over HTTPS or http://localhost — opening index.html
-  // directly via file:// will fail to grant mic access on modern browsers.
-  output: "export",
+  // For self-hosting (zip + serve from any static web host), uncomment the
+  // line below to produce a static `out/` directory on `npm run build`.
+  // The exported files need HTTPS or localhost for getUserMedia (mic).
+  //
+  // output: "export",
 };
 
 export default nextConfig;
