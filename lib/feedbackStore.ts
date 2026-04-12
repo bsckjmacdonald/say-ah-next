@@ -23,8 +23,7 @@ import type {
 // ── Google Sheets Apps Script web app URL ───────────────────────────────
 // Deploy the script in docs/apps-script.gs as a web app (Execute as: Me,
 // Access: Anyone) and paste the /exec URL here. When empty, the Sheets
-// path is silently skipped — data is still saved locally and available
-// via exportAll().
+// path is silently skipped — data is still saved locally.
 export const SHEETS_WEBAPP_URL =
   "https://script.google.com/macros/s/AKfycbwoSrFtdViyb642pz84vbzv0tQPiZLhDCOyuqIwDJHKDyQQU-NITIkRfzu7I2HSWWpg/exec";
 

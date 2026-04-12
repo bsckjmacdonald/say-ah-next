@@ -9,7 +9,7 @@
 //   - 1–5 star rating
 //   - Three VoiceTextarea fields (what worked, what didn't, suggestion)
 //   - Optional name + email
-//   - Submit + Cancel + Export buttons
+//   - Submit + Cancel buttons
 //
 // Submit → saves to localStorage AND POSTs to Formspree (if configured).
 // The Formspree payload includes all accumulated inline ratings since the
