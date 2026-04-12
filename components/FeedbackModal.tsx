@@ -19,10 +19,7 @@
 
 import { useState } from "react";
 import { VoiceTextarea } from "@/components/VoiceTextarea";
-import {
-  downloadFeedbackExport,
-  submitToFormspree,
-} from "@/lib/feedbackStore";
+import { submitToSheet } from "@/lib/feedbackStore";
 import type { DetailedFeedback } from "@/lib/types";
 
 interface Props {
@@ -77,7 +74,7 @@ export function FeedbackModal({ currentScreen }: Props) {
     };
 
     setSubmitting(true);
-    await submitToFormspree(feedback);
+    await submitToSheet(feedback);
     setSubmitting(false);
     setSubmitted(true);
     // Auto-close after a brief "thank you"
@@ -255,21 +252,6 @@ export function FeedbackModal({ currentScreen }: Props) {
                 onClick={handleCancel}
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-small"
-                style={{
-                  background: "transparent",
-                  color: "var(--color-primary)",
-                  textDecoration: "underline",
-                  minWidth: "auto",
-                  border: "none",
-                }}
-                onClick={downloadFeedbackExport}
-                title="Download all feedback data as JSON"
-              >
-                Export all
               </button>
             </div>
           </div>
