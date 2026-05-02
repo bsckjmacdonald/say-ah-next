@@ -214,8 +214,8 @@ export function generateFeedback(
           `${np}call your voice up from deep in your chest. Louder and steadier — that's what we want!`,
           `${d}${ns}. Next round: start loud and stay loud. Keep your voice right in the green zone.`,
           `${np}your voice has more in it! Open up and let it out — bolder and bigger.`,
-          `Imagine hailing a taxi across a busy street${ns} — that kind of projection is exactly what we're after.`,
-          `${np}give that voice some room to grow. Open wide, take a deep breath, and really go for it.`,
+          `Send your voice clearly across the room${ns} — that kind of carry is what we're after.`,
+          `${np}give that voice some room to grow. Open wide and really go for it.`,
           `${d}${ns}. Volume is the goal — commit to projecting that sound forward from the very start.`,
           `${np}think of your voice as a spotlight. Aim it out into the room — make it fill the space!`,
           `${np}the goal is a bold, confident sound — like you really mean it. Don't whisper it, own it!`,
@@ -232,8 +232,8 @@ export function generateFeedback(
         spoken = pickUnused(history, "loud.first", [
           `${np}wonderful energy! Ease back just a little — think warm, confident speaking voice rather than full projection. A steady sound actually holds longer.`,
           `Great power${ns}! Soften slightly next time — a resonant, comfortable voice is exactly what we're after.`,
-          `${np}lots of energy there! Dial it back just a touch. Think dinner-table conversation, not stadium announcement.`,
-          `${np}that voice is ready to go! Just bring the power in a little — strong and sustained beats loud and forced.`,
+          `${np}lots of energy there! Ease the effort just a touch — same voice, less push. A relaxed sound carries further than a forced one.`,
+          `${np}that voice is ready to go! Ease the effort just a little — strong and sustained beats loud and forced.`,
         ]);
         tip = "Ease back slightly — a comfortable, sustained voice holds longer than a strained one.";
       } else {
@@ -242,7 +242,7 @@ export function generateFeedback(
           `${d}${ns}. Find the sweet spot: resonant but relaxed, strong but not pushed. That's the zone.`,
           `${np}your voice will carry further when it isn't pushed. Think 'resonant and warm' — it lasts longer too.`,
           `${np}ease up slightly. A voice that's comfortable to hold is more powerful than one that's forced.`,
-          `${d}${ns}. Picture a calm, assured speaker — not shouting, just clear and carrying. That's your target.`,
+          `${d}${ns}. Aim for relaxed and resonant — same voice, less push. That's your target.`,
         ]);
         tip = "Stay in the green zone — sustained and steady beats loud and strained.";
       }
@@ -325,18 +325,18 @@ export function generateFeedback(
       if (sessionAvg) {
         spoken = pickUnused(history, "keep.avg", [
           `${np}great that your voice is in the zone. Push for a little longer next time — see if you can get past ${sessionAvg}.`,
-          `${d}${ns}. Volume is on point — now stretch that hold. Take a deep breath and really commit.`,
+          `${d}${ns}. Volume is on point — now stretch that hold. Really commit and see how far you can go.`,
           `${np}the voice is there, now build the hold. Next round: keep the sound going just a bit further than before.`,
-          `${d}${ns} — the volume sounds good. Try to hold through any impulse to stop and squeeze out a bit more.`,
+          `${d}${ns} — the volume sounds good. Try to hold the sound a little longer next time — see how far you can go.`,
           `${np}solid volume — ${d}. Next round, dare yourself to hold past the point you normally stop.`,
         ]);
       } else {
         spoken = pickUnused(history, "keep.general", [
-          `${np}voice is strong — hold it a little longer next round. Full breath and see how far you can go.`,
-          `${d}${ns}. Good volume — let's stretch it further. Breathe deep and push through.`,
+          `${np}voice is strong — hold it a little longer next round. See how far you can go.`,
+          `${d}${ns}. Good volume — let's stretch it further. Push through and hold longer.`,
           `${np}you've got the right sound — now see how long you can sustain it. Hold through the urge to stop.`,
-          `${d}${ns}, voice in the green. Next round: take a full breath and dare yourself to hold longer.`,
-          `${np}that's the right volume — now let's work on duration. Deep breath and keep that sound going.`,
+          `${d}${ns}, voice in the green. Next round: dare yourself to hold longer than before.`,
+          `${np}that's the right volume — now let's work on duration. Hold the sound a little longer next time.`,
         ]);
       }
       display = `${dShort}s — keep going!`;
@@ -346,14 +346,14 @@ export function generateFeedback(
     // ── TIRING ───────────────────────────────────────────────────────────
     case "tiring":
       spoken = pickUnused(history, "tiring", [
-        `${np}your voice is working hard today — that's real effort! Take a comfortable breath before the next round.`,
-        `${d}${ns}. It's natural to ease off as the session progresses. A breath and come back strong.`,
-        `${np}your voice has given a lot today. Slow, easy breath before the next round — you can finish strong.`,
+        `${np}your voice is working hard today — that's real effort! Ease into the next round when you're ready.`,
+        `${d}${ns}. It's natural to ease off as the session progresses. Take a moment, then come back strong.`,
+        `${np}your voice has given a lot today. Take your time — when you're ready, you can finish strong.`,
         `${np}the work is building up — that's the exercise doing its job. Recover a beat and go again.`,
         `${d}${ns}. Fatigue at this stage means you're pushing. Rest a moment and give the next round everything.`,
       ]);
-      display = `Take a comfortable breath — you're doing great.`;
-      tip = `Slow breath in, and give the next round everything you've got.`;
+      display = `Easing into the next round — you're doing great.`;
+      tip = `When you're ready, give the next round everything you've got.`;
       break;
   }
 
@@ -370,9 +370,16 @@ export function generateSessionCompleteMessage(
   );
   const best = formatSeconds(Math.max(...durations));
   const np = namePrefix(name);
-  return pick([
+  const opener = pick([
     `${np}you completed all 15 rounds. Your session average was ${avg} — that's real work.`,
     `Fifteen rounds done${name ? ", " + name : ""}. Best round today: ${best}. Your voice is getting stronger.`,
     `${np}all 15 rounds complete. Session average: ${avg}. You should feel proud of that effort.`,
   ]);
+  // Loudness is the primary clinical goal — every session-complete message
+  // closes with that reminder so it lands both on screen and in the closing
+  // TTS.
+  return (
+    opener +
+    " Your progress will help your voice get stronger — feeling loud makes it easier for others to hear and understand you."
+  );
 }

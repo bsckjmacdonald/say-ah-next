@@ -111,6 +111,11 @@ export function MicPermissionScreen({ onRequestMic, onGranted }: Props) {
           </strong>{" "}
           — you&apos;ll only need to do this once.
         </p>
+        <p className="mic-privacy-note">
+          Your voice is recorded only during each round so you can play it
+          back. The recording stays on your device — it isn&apos;t uploaded —
+          and is discarded the moment you start the next round.
+        </p>
         <button
           className="btn-primary"
           onClick={handleClick}

@@ -5,7 +5,7 @@
 // will hydrate-mismatch otherwise).
 // ============================================================================
 
-import { PB_KEY, STORAGE_KEY } from "./constants";
+import { PB_KEY, SPEAK_COACH_CUES_KEY, STORAGE_KEY } from "./constants";
 import type { SessionRecord } from "./types";
 
 const MAX_HISTORY = 30;
@@ -19,6 +19,19 @@ export function loadPersonalBest(): number {
 export function savePersonalBest(value: number): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(PB_KEY, value.toString());
+}
+
+// Coach-cue TTS preference. Default is false — clinician feedback was that
+// the in-rep voice was distracting. The on-screen cue always shows; this
+// only controls whether it's also spoken.
+export function loadSpeakCoachCues(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(SPEAK_COACH_CUES_KEY) === "true";
+}
+
+export function saveSpeakCoachCues(value: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SPEAK_COACH_CUES_KEY, value ? "true" : "false");
 }
 
 export function loadHistory(): SessionRecord[] {

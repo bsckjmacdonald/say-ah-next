@@ -39,24 +39,25 @@ function renderLoudnessChart(
   const scl = (lvl: number) =>
     Math.min(Math.max(lvl, 0), CHART_MAX_LEVEL) / CHART_MAX_LEVEL;
 
-  // Zone background bands
+  // Zone background bands. Alpha bumped from 0.18 → 0.28 so the zones are
+  // visibly distinct on cream backgrounds without overpowering the line.
   const softFrac = scl(METER_SOFT_THRESHOLD);
   const loudFrac = scl(METER_LOUD_THRESHOLD);
   const bands = [
     {
       yFrac: 0,
       hFrac: 1 - loudFrac,
-      color: "rgba(224,123,90,0.18)",
+      color: "rgba(224,123,90,0.28)",
     },
     {
       yFrac: 1 - loudFrac,
       hFrac: loudFrac - softFrac,
-      color: "rgba(52,199,89,0.18)",
+      color: "rgba(52,199,89,0.28)",
     },
     {
       yFrac: 1 - softFrac,
       hFrac: softFrac,
-      color: "rgba(244,196,52,0.18)",
+      color: "rgba(244,196,52,0.28)",
     },
   ];
   bands.forEach((z) => {
@@ -67,7 +68,7 @@ function renderLoudnessChart(
   // Dashed zone-boundary lines
   ctx.save();
   ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = "rgba(0,0,0,0.12)";
+  ctx.strokeStyle = "rgba(0,0,0,0.22)";
   ctx.lineWidth = 1;
   [METER_LOUD_THRESHOLD, METER_SOFT_THRESHOLD].forEach((lvl) => {
     const y = cH * (1 - scl(lvl));
@@ -110,9 +111,9 @@ function renderLoudnessChart(
   const xStep = W / STRIP_MAX_POINTS;
   const lvlToY = (lvl: number) => cH * (1 - scl(lvl));
   const zoneClr = (lvl: number) => {
-    if (lvl < METER_SOFT_THRESHOLD) return "#c9a800";
-    if (lvl < METER_LOUD_THRESHOLD) return "#1a8a3a";
-    return "#c04e26";
+    if (lvl < METER_SOFT_THRESHOLD) return "#a88a00";
+    if (lvl < METER_LOUD_THRESHOLD) return "#157031";
+    return "#a8401e";
   };
 
   // Filled area under the curve
@@ -124,8 +125,9 @@ function renderLoudnessChart(
   ctx.fillStyle = "rgba(42,124,124,0.13)";
   ctx.fill();
 
-  // Line segments coloured by zone
-  ctx.lineWidth = 2.5;
+  // Line segments coloured by zone. Stroke widened from 2.5 → 3 to read at
+  // a glance on the larger graph height.
+  ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   for (let i = 1; i < buffer.length; i++) {

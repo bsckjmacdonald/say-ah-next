@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { TOTAL_REPS } from "@/lib/constants";
+import { loadSpeakCoachCues, saveSpeakCoachCues } from "@/lib/storage";
 
 interface Props {
   userName: string;
@@ -15,13 +17,27 @@ export function WelcomeScreen({
   onBegin,
   onShowHistory,
 }: Props) {
+  // Persisted opt-in for in-rep TTS coach cues. The on-screen text always
+  // shows; this toggle controls only whether the cue is also spoken.
+  // Hydrate from localStorage after mount — same pattern useSession uses for
+  // its persisted state (reading storage during render would SSR-mismatch).
+  const [speakCoachCues, setSpeakCoachCues] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSpeakCoachCues(loadSpeakCoachCues());
+  }, []);
+
+  const handleSpeakCoachCuesChange = (value: boolean) => {
+    setSpeakCoachCues(value);
+    saveSpeakCoachCues(value);
+  };
   return (
     <div className="screen">
       <div className="welcome-content">
         <div className="icon-container">
           <svg
-            width="120"
-            height="120"
+            width="84"
+            height="84"
             viewBox="0 0 120 120"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -52,7 +68,7 @@ export function WelcomeScreen({
         </div>
         <h1>Say Ah</h1>
         <p className="subtitle">Voice Exercise</p>
-        <p className="instruction-text" style={{ marginTop: 40 }}>
+        <p className="instruction-text" style={{ marginTop: 16 }}>
           Today you&apos;ll do {TOTAL_REPS} voice rounds.
           <br />
           Take your time with each one.
@@ -73,6 +89,21 @@ export function WelcomeScreen({
             value={userName}
             onChange={(e) => onUserNameChange(e.target.value)}
           />
+        </div>
+        <div className="welcome-toggle-row">
+          <input
+            type="checkbox"
+            id="speak-coach-cues-toggle"
+            className="welcome-toggle-checkbox"
+            checked={speakCoachCues}
+            onChange={(e) => handleSpeakCoachCuesChange(e.target.checked)}
+          />
+          <label
+            htmlFor="speak-coach-cues-toggle"
+            className="welcome-toggle-label"
+          >
+            Speak coach cues during rounds
+          </label>
         </div>
         <div className="button-group">
           <button className="btn-primary" onClick={onBegin}>
