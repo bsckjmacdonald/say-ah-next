@@ -15,3 +15,10 @@ export function formatSeconds(seconds: number): string {
   const n = Math.round(seconds);
   return `${n} second${n === 1 ? "" : "s"}`;
 }
+
+export function formatMinutesSeconds(seconds: number): string {
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}

@@ -142,6 +142,7 @@ export default function Page() {
       {screen === "rep-result" && repResult && (
         <RepResultScreen
           result={repResult}
+          durations={session.durations}
           onNext={handleNextRep}
           onSeeResults={handleSeeResults}
           onDiscardRecording={handleDiscardRecording}

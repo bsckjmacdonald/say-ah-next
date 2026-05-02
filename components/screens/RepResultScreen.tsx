@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
 import { FinalStripChart } from "@/components/StripChart";
-import { formatSeconds } from "@/lib/format";
+import { formatSeconds, formatMinutesSeconds } from "@/lib/format";
 import { cancelSpeech } from "@/lib/tts";
 import { RepRating } from "@/components/RepRating";
 import type { RepResult } from "@/hooks/useSession";
 
 interface Props {
   result: RepResult;
+  durations: number[];
   onNext: () => void;
   onSeeResults: () => void;
   onDiscardRecording: () => void;
@@ -18,11 +19,13 @@ interface Props {
 
 export function RepResultScreen({
   result,
+  durations,
   onNext,
   onSeeResults,
   onDiscardRecording,
 }: Props) {
   const isLast = result.repNumber >= TOTAL_REPS;
+  const totalSpeakingTime = durations.reduce((a, b) => a + b, 0);
   const [discarded, setDiscarded] = useState(false);
 
   // ── Playback ──────────────────────────────────────────────────────────
@@ -79,6 +82,9 @@ export function RepResultScreen({
         </div>
         <div className="result-duration">
           You held it for {formatSeconds(result.duration)}!
+        </div>
+        <div className="result-running-total">
+          Total speaking time so far: {formatMinutesSeconds(totalSpeakingTime)}
         </div>
 
         {result.audioUrl && !discarded && (

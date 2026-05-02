@@ -701,6 +701,15 @@ svg {
   text-align: center;
 }
 
+.result-running-total {
+  font-size: clamp(14px, 2.2svh, 18px);
+  color: var(--color-fg);
+  opacity: 0.75;
+  text-align: center;
+  margin-top: -4px;
+  margin-bottom: var(--space-y-sm);
+}
+
 .result-strip-chart {
   display: block;
   width: 100%;
@@ -823,11 +832,19 @@ svg {
   margin-right: 6px;
 }
 
-.personal-best-display {
+.total-speaking-time-display {
   font-size: 24px;
   color: var(--color-primary);
   text-align: center;
   margin-top: 24px;
+  font-weight: 600;
+}
+
+.personal-best-display {
+  font-size: 24px;
+  color: var(--color-primary);
+  text-align: center;
+  margin-top: 8px;
   font-weight: 600;
 }
 
