@@ -72,16 +72,47 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* `safe center` is a fallback: when the layout actually fits (the goal on
-     every screen), it centers; if a content overflow ever sneaks through, it
-     pins to the top instead of pushing the header off-screen. */
+  /* `safe center` keeps centering when content fits (the goal on every
+     screen) but pins to flex-start when it overflows so the header stays
+     reachable. `overflow-y: auto` then lets the user scroll to reach the
+     bottom of the screen — necessary on truly content-heavy screens like
+     mic-permission where the Safari mock dialog is intrinsically tall. */
   justify-content: center;
   justify-content: safe center;
   padding: var(--space-y) clamp(16px, 4vw, 40px);
   min-height: 0;
   opacity: 1;
-  overflow: hidden;
+  overflow-y: auto;
   animation: screen-fade-in 0.5s ease-in-out;
+}
+
+/* Per-screen flex gaps — relative to the same vertical-rhythm token so
+   they shrink on short viewports along with everything else. */
+.exercise-screen {
+  gap: var(--space-y-sm);
+  padding-top: var(--space-y);
+}
+.pre-rep-screen {
+  gap: var(--space-y);
+}
+.rep-result-screen {
+  gap: var(--space-y-sm);
+}
+/* Mic-permission has the most stacked children (icon, h2, instruction,
+   dialog, annotation, tap-instruction, privacy note, button); a tighter
+   inner gap is the difference between fitting and not at 600 svh. */
+.mic-perm-screen .content-wrapper {
+  gap: var(--space-y-sm);
+}
+/* Rep result has rep-number, duration, playback row, chart, message, rating,
+   and Next button. Tighter gap keeps it inside 600 svh. */
+.rep-result-screen .content-wrapper {
+  gap: var(--space-y-sm);
+}
+/* Pre-rep is leaner (rep number, instruction, mic-distance, optional tip,
+   button) — default content-wrapper gap is fine but trim a hair. */
+.pre-rep-screen .content-wrapper {
+  gap: var(--space-y-sm);
 }
 
 @keyframes screen-fade-in {
@@ -226,20 +257,24 @@ button,
   color: var(--color-primary);
   border: 3px solid var(--color-primary);
   border-radius: 14px;
-  font-size: 24px;
+  font-size: clamp(16px, 2.6svh, 24px);
   font-weight: 600;
-  padding: 18px 36px;
-  min-height: 76px;
-  min-width: 280px;
+  padding: clamp(8px, 1.4svh, 16px) clamp(18px, 4vw, 36px);
+  min-height: clamp(44px, 7svh, 64px);
+  min-width: clamp(200px, 60vw, 280px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  margin: 8px auto;
+  gap: 12px;
+  margin: 4px auto;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(42, 124, 124, 0.12);
+}
+.btn-playback svg {
+  width: clamp(18px, 3svh, 28px);
+  height: auto;
 }
 .btn-playback:hover {
   background: var(--color-primary);
@@ -316,16 +351,18 @@ button:focus-visible,
    ICON CONTAINER
    ============================================================ */
 .icon-container {
-  margin-bottom: var(--space-y-sm);
+  margin-bottom: clamp(2px, 0.6svh, 8px);
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 /* Hero/header icons scale with viewport height. The inline SVG width/height
-   attributes set the aspect ratio; CSS overrides the rendered size. */
+   attributes set the aspect ratio; CSS overrides the rendered size. Capped
+   at 60 px so even on tall desktops the screen height budget isn't dominated
+   by the hero. */
 .icon-container svg {
-  width: clamp(48px, 11svh, 96px);
+  width: clamp(36px, 7svh, 60px);
   height: auto;
 }
 
@@ -350,6 +387,34 @@ svg {
   text-align: center;
   max-width: 600px;
 }
+.welcome-instruction {
+  margin-top: var(--space-y-sm);
+}
+
+/* Top-right corner link replaces the stacked View History link in the button
+   group — frees vertical space without hiding the entry point. Sits above
+   the content so it's reachable independent of where the centered content
+   lands. */
+.welcome-history-corner-link {
+  position: absolute;
+  top: clamp(8px, 2svh, 20px);
+  right: clamp(12px, 3vw, 28px);
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: clamp(13px, 2.1svh, 16px);
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  font-family: inherit;
+}
+.welcome-history-corner-link:hover {
+  color: var(--color-accent);
+}
 
 .button-group {
   display: flex;
@@ -368,7 +433,7 @@ svg {
   justify-content: center;
   align-items: center;
   gap: var(--space-y-sm);
-  margin: var(--space-y) auto;
+  margin: var(--space-y-sm) auto;
 }
 
 .db-readout-wrapper {
@@ -413,8 +478,8 @@ svg {
 
 .meter-track-wrapper {
   position: relative;
-  width: clamp(40px, 8svh, 56px);
-  height: clamp(120px, 24svh, 200px);
+  width: clamp(36px, 7svh, 56px);
+  height: clamp(90px, 18svh, 200px);
   flex-shrink: 0;
 }
 
@@ -512,13 +577,14 @@ svg {
    DURATION DISPLAY
    ============================================================ */
 .duration-display {
-  font-size: clamp(48px, 9svh, 80px);
+  font-size: clamp(40px, 7.5svh, 72px);
   font-weight: 700;
   color: var(--color-primary);
   text-align: center;
-  margin: var(--space-y) 0;
+  margin: var(--space-y-sm) 0;
   font-variant-numeric: tabular-nums;
   letter-spacing: 2px;
+  line-height: 1;
 }
 
 /* ============================================================
@@ -605,33 +671,33 @@ svg {
 .strip-chart {
   display: block;
   width: 100%;
-  /* Grows into the vertical space freed by the viewport fix while staying
-     within sensible bounds on very tall or very short screens. */
-  height: clamp(120px, 22svh, 200px);
+  /* Scales between very short viewports (mobile landscape) and tall desktops.
+     Floor of 70px keeps zone bands legible; ceiling caps growth. */
+  height: clamp(70px, 15svh, 180px);
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: transparent;
 }
 .strip-chart-label {
-  font-size: 13px;
+  font-size: clamp(11px, 1.6svh, 13px);
   color: var(--color-fg-soft);
   text-align: center;
-  margin-top: 3px;
+  margin-top: 2px;
   letter-spacing: 0.2px;
 }
 
 .result-rep-number {
-  font-size: 32px;
+  font-size: clamp(22px, 3.8svh, 32px);
   color: var(--color-accent);
   font-weight: 600;
 }
 
 .result-duration {
-  font-size: 48px;
+  font-size: clamp(30px, 5.6svh, 48px);
   font-weight: 700;
   color: var(--color-primary);
-  margin: 24px 0;
-  line-height: 1.4;
+  margin: var(--space-y-sm) 0;
+  line-height: 1.3;
   text-align: center;
 }
 
@@ -639,43 +705,45 @@ svg {
   display: block;
   width: 100%;
   max-width: 540px;
-  height: 140px;
+  height: clamp(80px, 14svh, 140px);
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  margin: 16px auto;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  margin: var(--space-y-sm) auto;
 }
 
 .result-message {
-  font-size: 26px;
+  font-size: clamp(16px, 2.6svh, 24px);
   color: var(--color-fg);
   max-width: 600px;
   text-align: center;
-  margin: 20px 0 40px;
-  line-height: 1.6;
+  margin: var(--space-y-sm) 0;
+  line-height: 1.4;
 }
 
 /* ============================================================
    SESSION COMPLETE / RESULTS CHART
    ============================================================ */
 .session-complete-screen {
-  justify-content: flex-start !important;
-  padding-top: 60px !important;
-  overflow-y: auto;
+  justify-content: safe center !important;
+  padding-top: var(--space-y) !important;
+  /* Inherits `overflow-y: auto` from .screen so the results chart + summary
+     remain reachable on short viewports. */
 }
 
 .session-summary-message {
-  font-size: 28px;
+  font-size: clamp(18px, 3svh, 28px);
   color: var(--color-fg);
-  margin: 24px 0 40px;
+  margin: var(--space-y-sm) 0 var(--space-y);
   max-width: 600px;
   text-align: center;
+  line-height: 1.4;
 }
 
 .results-chart {
   width: 100%;
   max-width: 700px;
-  margin: 40px auto;
-  padding: 20px;
+  margin: var(--space-y) auto;
+  padding: var(--space-y-sm) var(--space-y);
   background-color: rgba(42, 124, 124, 0.05);
   border-radius: 12px;
 }
@@ -821,21 +889,21 @@ svg {
    NAME INPUT
    ============================================================ */
 .name-input-wrapper {
-  margin: 16px auto 0;
+  margin: var(--space-y-sm) auto 0;
   text-align: center;
 }
 
 .name-label {
   display: block;
-  font-size: 20px;
+  font-size: clamp(14px, 2.2svh, 20px);
   color: var(--color-fg-soft);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .name-input {
-  width: 280px;
-  padding: 14px 20px;
-  font-size: 24px;
+  width: clamp(220px, 60vw, 280px);
+  padding: clamp(8px, 1.4svh, 14px) 20px;
+  font-size: clamp(18px, 2.8svh, 24px);
   font-family: inherit;
   border: 2px solid #cccccc;
   border-radius: 10px;
@@ -857,24 +925,24 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 10px auto 0;
+  margin: var(--space-y-sm) auto 0;
   max-width: 480px;
 }
 
 .welcome-toggle-checkbox {
-  width: 22px;
-  height: 22px;
+  width: clamp(18px, 2.4svh, 22px);
+  height: clamp(18px, 2.4svh, 22px);
   accent-color: var(--color-primary);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .welcome-toggle-label {
-  font-size: 18px;
+  font-size: clamp(13px, 2.1svh, 18px);
   color: var(--color-fg-soft);
   cursor: pointer;
   text-align: left;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 /* ============================================================
@@ -896,38 +964,55 @@ svg {
 /* ============================================================
    MIC PERMISSION GUIDANCE — Safari mock dialog
    ============================================================ */
+/* Safari permission dialog mock — shrunk to ~70% of the original Safari
+   prompt size so the mic-permission screen fits a 600 svh viewport without
+   scrolling. All internal sizes (font, padding, SVG dimensions) are reduced
+   proportionally; the dialog still reads as authentic Safari, just smaller. */
 .mic-safari-dialog {
-  max-width: 340px;
-  margin: 20px auto 4px;
+  max-width: 240px;
+  margin: var(--space-y-sm) auto 4px;
   background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   font-family: -apple-system, "SF Pro Text", Arial, sans-serif;
   text-align: left;
+}
+/* Override inline SVG dimensions — proportional shrink. */
+.mic-safari-dialog svg {
+  width: 13px;
+  height: 13px;
+}
+.mic-safari-request svg {
+  width: 14px;
+  height: 14px;
+}
+.mic-safari-preview-card svg {
+  width: 10px;
+  height: 10px;
 }
 
 .mic-safari-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 14px 10px;
+  gap: 6px;
+  padding: 7px 10px 6px;
   border-bottom: 1px solid #e5e5ea;
 }
 .mic-safari-header-text {
   flex: 1;
-  font-size: 13px;
+  font-size: 11px;
   color: #8e8e93;
 }
 .mic-safari-close {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   background: #e5e5ea;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 11px;
   color: #636366;
   flex-shrink: 0;
 }
@@ -935,29 +1020,29 @@ svg {
 .mic-safari-request {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px 10px;
+  gap: 7px;
+  padding: 6px 10px 4px;
 }
 .mic-safari-request-text {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: #1c1c1e;
 }
 
 .mic-safari-preview-card {
-  margin: 0 14px 12px;
+  margin: 0 10px 6px;
   background: #f2f2f7;
-  border-radius: 10px;
-  padding: 9px 11px;
+  border-radius: 7px;
+  padding: 5px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .mic-safari-level-track {
   flex: 1;
-  height: 5px;
+  height: 4px;
   background: #d1d1d6;
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
 .mic-safari-level-fill {
@@ -980,7 +1065,7 @@ svg {
   }
 }
 .mic-safari-dropdown-label {
-  font-size: 10px;
+  font-size: 9px;
   color: #636366;
   white-space: nowrap;
   display: flex;
@@ -990,17 +1075,17 @@ svg {
 }
 
 .mic-safari-buttons {
-  padding: 0 14px 14px;
+  padding: 0 10px 7px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 4px;
 }
 .mic-safari-btn {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 20px;
+  padding: 5px 11px;
+  border-radius: 14px;
   font-family: -apple-system, "SF Pro Text", Arial, sans-serif;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   background: #f2c94c;
   color: #1c1c1e;
@@ -1030,26 +1115,38 @@ svg {
 
 .mic-safari-annotation {
   text-align: center;
-  margin-top: 6px;
-  font-size: 17px;
+  margin-top: 4px;
+  font-size: clamp(13px, 2.2svh, 17px);
   color: var(--color-primary);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .mic-perm-error {
-  font-size: 20px;
+  font-size: clamp(15px, 2.4svh, 20px);
   color: var(--color-accent);
-  margin-top: 12px;
+  margin-top: var(--space-y-sm);
   text-align: center;
 }
 
-.mic-privacy-note {
-  font-size: 17px;
+.mic-perm-tap-instruction {
+  font-size: clamp(15px, 2.5svh, 22px);
   color: var(--color-fg-soft);
   text-align: center;
-  margin-top: 10px;
-  line-height: 1.35;
+  margin-top: var(--space-y-sm);
+  line-height: 1.4;
+  max-width: 520px;
+}
+.mic-perm-tap-instruction strong {
+  color: #1c1c1e;
+}
+
+.mic-privacy-note {
+  font-size: clamp(13px, 2.1svh, 17px);
+  color: var(--color-fg-soft);
+  text-align: center;
+  margin-top: var(--space-y-sm);
+  line-height: 1.3;
   max-width: 520px;
 }
 
@@ -1060,30 +1157,30 @@ svg {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin: 8px 0;
+  gap: 4px;
+  margin: 4px 0;
 }
 .rep-rating-done {
-  font-size: 20px;
+  font-size: clamp(15px, 2.3svh, 20px);
   color: var(--color-fg-soft);
 }
 .rep-rating-label {
-  font-size: 18px;
+  font-size: clamp(14px, 2svh, 18px);
   color: var(--color-fg-soft);
 }
 .rep-rating-buttons {
   display: flex;
-  gap: 20px;
+  gap: clamp(10px, 2vw, 20px);
 }
 .rep-rating-btn {
-  font-size: 28px;
+  font-size: clamp(20px, 3.5svh, 28px);
   background: rgba(42, 124, 124, 0.08);
   border: 2px solid transparent;
   border-radius: 50%;
-  width: 56px;
-  height: 56px;
-  min-width: 56px;
-  min-height: 56px;
+  width: clamp(40px, 7svh, 56px);
+  height: clamp(40px, 7svh, 56px);
+  min-width: clamp(40px, 7svh, 56px);
+  min-height: clamp(40px, 7svh, 56px);
   padding: 0;
   margin: 0;
   display: flex;
@@ -1308,41 +1405,18 @@ svg {
 /* ============================================================
    RESPONSIVE & ACCESSIBILITY
    ============================================================ */
+/* Most prior @media (max-width: 768px) overrides are obsolete now that body
+   font, headings, buttons, duration display, rep number, and coach cue all
+   use clamp() with svh inputs. The remaining narrow-viewport tweaks are
+   width-based, not height-based. */
 @media (max-width: 768px) {
-  body {
-    font-size: 26px;
-  }
-  h1 {
-    font-size: 44px;
-  }
-  h2 {
-    font-size: 36px;
-  }
-  h3 {
-    font-size: 28px;
-  }
   button,
   .button {
-    font-size: 22px;
-    min-width: 180px;
-    min-height: 64px;
-  }
-  .duration-display {
-    font-size: 64px;
-  }
-  .result-duration {
-    font-size: 40px;
+    min-width: 160px;
   }
   .chart-label {
     min-width: 100px;
-    font-size: 18px;
-  }
-  .exercise-rep-number {
-    font-size: 32px;
-  }
-  .exercise-coach-cue {
-    font-size: 30px;
-    min-height: 40px;
+    font-size: 16px;
   }
 }
 

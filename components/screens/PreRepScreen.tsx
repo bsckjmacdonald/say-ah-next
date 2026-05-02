@@ -11,7 +11,7 @@ interface Props {
 
 export function PreRepScreen({ currentRep, tip, onStart }: Props) {
   return (
-    <div className="screen" style={{ gap: 20 }}>
+    <div className="screen pre-rep-screen">
       <ProgressBar currentRep={currentRep} />
       <div className="content-wrapper">
         <h2 className="pre-rep-number">
@@ -24,12 +24,7 @@ export function PreRepScreen({ currentRep, tip, onStart }: Props) {
           Hold your phone about 12 in (30 cm) from your mouth.
         </p>
         {tip && <div className="pre-rep-tip">{tip}</div>}
-        <button
-          className="btn-primary"
-          onClick={onStart}
-          style={{ marginTop: 24 }}
-          autoFocus
-        >
+        <button className="btn-primary" onClick={onStart} autoFocus>
           I&apos;m Ready — Start
         </button>
       </div>

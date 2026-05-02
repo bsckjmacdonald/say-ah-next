@@ -153,7 +153,7 @@ export function ExerciseScreen({
   }, []);
 
   return (
-    <div className="screen" style={{ gap: 10, paddingTop: 28 }}>
+    <div className="screen exercise-screen">
       <ProgressBar currentRep={currentRep} />
       <div className="exercise-header">
         <div className="exercise-rep-number">
@@ -186,7 +186,6 @@ export function ExerciseScreen({
         ref={stopBtnRef}
         className="btn-secondary"
         onClick={analyser.stop}
-        style={{ marginTop: 20 }}
       >
         Done — Stop
       </button>

@@ -71,7 +71,7 @@ export function RepResultScreen({
   };
 
   return (
-    <div className="screen" style={{ gap: 16 }}>
+    <div className="screen rep-result-screen">
       <ProgressBar currentRep={result.repNumber} />
       <div className="content-wrapper">
         <div className="result-rep-number">
@@ -136,7 +136,6 @@ export function RepResultScreen({
         <button
           className="btn-primary"
           onClick={isLast ? onSeeResults : onNext}
-          style={{ marginTop: 24 }}
           autoFocus
         >
           {isLast ? "See My Results" : "Next Round"}

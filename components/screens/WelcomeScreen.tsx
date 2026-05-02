@@ -32,7 +32,14 @@ export function WelcomeScreen({
     saveSpeakCoachCues(value);
   };
   return (
-    <div className="screen">
+    <div className="screen welcome-screen">
+      <button
+        type="button"
+        className="welcome-history-corner-link"
+        onClick={onShowHistory}
+      >
+        View History
+      </button>
       <div className="welcome-content">
         <div className="icon-container">
           <svg
@@ -68,7 +75,7 @@ export function WelcomeScreen({
         </div>
         <h1>Say Ah</h1>
         <p className="subtitle">Voice Exercise</p>
-        <p className="instruction-text" style={{ marginTop: 16 }}>
+        <p className="instruction-text welcome-instruction">
           Today you&apos;ll do {TOTAL_REPS} voice rounds.
           <br />
           Take your time with each one.
@@ -108,9 +115,6 @@ export function WelcomeScreen({
         <div className="button-group">
           <button className="btn-primary" onClick={onBegin}>
             Let&apos;s Begin
-          </button>
-          <button className="link-button" onClick={onShowHistory}>
-            View History
           </button>
         </div>
       </div>
