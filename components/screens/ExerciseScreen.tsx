@@ -25,9 +25,12 @@ import {
   freshRealtimeState,
   type RealtimeFeedbackState,
 } from "@/lib/realtimeFeedback";
+import { loadSpeakCoachCues } from "@/lib/storage";
 import { speakMessage } from "@/lib/tts";
 import type { UseAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import type { RepCompletion } from "@/lib/types";
+
+const COACH_CUE_HOLD_MS = 2500;
 
 interface Props {
   currentRep: number;
@@ -56,8 +59,18 @@ export function ExerciseScreen({
   const realtimeStateRef = useRef<RealtimeFeedbackState>(freshRealtimeState());
 
   // Pre-onset prompt switches to "Keep going" once voice is detected.
-  const [prompt, setPrompt] = useState("Take a breath... then say Ahh");
+  const [prompt, setPrompt] = useState("Get ready... then say Ahhh");
   const [showTip, setShowTip] = useState(!!tip);
+
+  // Coach cue rendered as transient on-screen text. The TTS path is opt-in
+  // (toggled on the welcome screen) — clinician feedback was that the
+  // in-rep voice was distracting at default settings, so text wins by default.
+  const [coachCue, setCoachCue] = useState<string | null>(null);
+  const coachCueTimerRef = useRef<number | null>(null);
+  const speakCoachCuesRef = useRef(false);
+  useEffect(() => {
+    speakCoachCuesRef.current = loadSpeakCoachCues();
+  }, []);
 
   // Start the analyser loop on mount, restart whenever the rep number changes.
   useEffect(() => {
@@ -66,7 +79,12 @@ export function ExerciseScreen({
     stripRef.current?.reset();
     realtimeStateRef.current = freshRealtimeState();
     latestRmsRef.current = 0;
-    setPrompt("Take a breath... then say Ahh");
+    setPrompt("Get ready... then say Ahhh");
+    setCoachCue(null);
+    if (coachCueTimerRef.current !== null) {
+      window.clearTimeout(coachCueTimerRef.current);
+      coachCueTimerRef.current = null;
+    }
 
     analyser.start(
       {
@@ -83,11 +101,22 @@ export function ExerciseScreen({
               realtimeStateRef.current,
               performance.now(),
             );
-            // Energetic prosody (rate +20 %, pitch +30 %) so coach cues
-            // sound brighter than the conversational post-rep encouragement.
-            // Real prosody work — recorded clips, varied per-phrase
-            // emphasis — is on the TODO list (see lib/tts.ts comment).
-            if (phrase) speakMessage(phrase, { rate: 1.2, pitch: 1.3 });
+            if (phrase) {
+              setCoachCue(phrase);
+              if (coachCueTimerRef.current !== null) {
+                window.clearTimeout(coachCueTimerRef.current);
+              }
+              coachCueTimerRef.current = window.setTimeout(() => {
+                setCoachCue(null);
+                coachCueTimerRef.current = null;
+              }, COACH_CUE_HOLD_MS);
+              // Opt-in TTS — energetic prosody (rate +20 %, pitch +30 %) so
+              // coach cues sound brighter than the conversational post-rep
+              // encouragement.
+              if (speakCoachCuesRef.current) {
+                speakMessage(phrase, { rate: 1.2, pitch: 1.3 });
+              }
+            }
           }
         },
         onStripUpdate: (buf) => stripRef.current?.draw(buf),
@@ -112,14 +141,32 @@ export function ExerciseScreen({
     return () => clearTimeout(t);
   }, [tip, currentRep]);
 
+  // Clear any pending coach-cue timer on unmount so it can't fire after the
+  // screen is gone.
+  useEffect(() => {
+    return () => {
+      if (coachCueTimerRef.current !== null) {
+        window.clearTimeout(coachCueTimerRef.current);
+        coachCueTimerRef.current = null;
+      }
+    };
+  }, []);
+
   return (
-    <div className="screen" style={{ gap: 10, paddingTop: 40 }}>
+    <div className="screen exercise-screen">
       <ProgressBar currentRep={currentRep} />
       <div className="exercise-header">
         <div className="exercise-rep-number">
           Round {currentRep} of {TOTAL_REPS}
         </div>
         <p className="keep-going-text">{prompt}</p>
+        <div
+          className="exercise-coach-cue"
+          style={{ opacity: coachCue ? 1 : 0 }}
+          aria-live="polite"
+        >
+          {coachCue ?? " "}
+        </div>
       </div>
       {tip && (
         <div
@@ -139,7 +186,6 @@ export function ExerciseScreen({
         ref={stopBtnRef}
         className="btn-secondary"
         onClick={analyser.stop}
-        style={{ marginTop: 40 }}
       >
         Done — Stop
       </button>

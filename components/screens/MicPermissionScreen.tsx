@@ -20,7 +20,7 @@ export function MicPermissionScreen({ onRequestMic, onGranted }: Props) {
   };
 
   return (
-    <div className="screen">
+    <div className="screen mic-perm-screen">
       <div className="content-wrapper" style={{ maxWidth: 560 }}>
         <div className="icon-container">
           <svg
@@ -51,7 +51,7 @@ export function MicPermissionScreen({ onRequestMic, onGranted }: Props) {
           </svg>
         </div>
         <h2>One quick step</h2>
-        <p className="instruction-text" style={{ fontSize: 24 }}>
+        <p className="instruction-text">
           Say Ah uses your microphone to track your voice. Your browser will
           ask permission — here&apos;s what to do:
         </p>
@@ -101,21 +101,20 @@ export function MicPermissionScreen({ onRequestMic, onGranted }: Props) {
         </div>
         <div className="mic-safari-annotation">↑ tap this one</div>
 
-        <p
-          className="instruction-text"
-          style={{ fontSize: 22, color: "#5A6A6A", marginTop: 10 }}
-        >
+        <p className="mic-perm-tap-instruction">
           A popup like this will appear on your screen. Tap{" "}
-          <strong style={{ color: "#1c1c1e" }}>
-            &quot;Allow while visiting the site&quot;
-          </strong>{" "}
-          — you&apos;ll only need to do this once.
+          <strong>&quot;Allow while visiting the site&quot;</strong> —
+          you&apos;ll only need to do this once.
+        </p>
+        <p className="mic-privacy-note">
+          Your voice is recorded only during each round so you can play it
+          back. The recording stays on your device — it isn&apos;t uploaded —
+          and is discarded the moment you start the next round.
         </p>
         <button
           className="btn-primary"
           onClick={handleClick}
           style={{
-            marginTop: 32,
             background: denied ? "#E07B5A" : undefined,
           }}
         >

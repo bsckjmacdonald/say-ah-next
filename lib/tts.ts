@@ -43,7 +43,10 @@ export function speakMessage(text: string, options?: SpeakOptions): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(text);
+  // Leading ". " gives the synth a brief silent moment to warm up before the
+  // first audible word — fixes the dropout that swallowed the leading word
+  // ("take" was missing in user testing).
+  const utterance = new SpeechSynthesisUtterance(". " + text);
   utterance.rate = options?.rate ?? 1.0;
   utterance.pitch = options?.pitch ?? 1.0;
   utterance.volume = options?.volume ?? 1.0;

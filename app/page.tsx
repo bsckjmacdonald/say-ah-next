@@ -103,6 +103,10 @@ export default function Page() {
     setScreen("welcome");
   }, []);
 
+  const handleDiscardRecording = useCallback(() => {
+    analyser.discardCurrentAudio();
+  }, [analyser]);
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="app-container">
@@ -138,8 +142,10 @@ export default function Page() {
       {screen === "rep-result" && repResult && (
         <RepResultScreen
           result={repResult}
+          durations={session.durations}
           onNext={handleNextRep}
           onSeeResults={handleSeeResults}
+          onDiscardRecording={handleDiscardRecording}
         />
       )}
       {screen === "session-complete" && (

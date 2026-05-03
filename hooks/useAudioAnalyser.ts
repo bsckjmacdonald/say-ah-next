@@ -91,6 +91,11 @@ export interface UseAudioAnalyser {
   stop: () => void;
   /** Whether the mic is currently granted. */
   isReady: () => boolean;
+  /**
+   * Revoke the most recent rep's blob URL early (before the next rep starts).
+   * Used by the "Discard recording" control on the result screen.
+   */
+  discardCurrentAudio: () => void;
 }
 
 export function useAudioAnalyser(): UseAudioAnalyser {
@@ -366,6 +371,13 @@ export function useAudioAnalyser(): UseAudioAnalyser {
 
   const isReady = useCallback(() => mediaStreamRef.current !== null, []);
 
+  const discardCurrentAudio = useCallback(() => {
+    if (lastAudioUrlRef.current) {
+      URL.revokeObjectURL(lastAudioUrlRef.current);
+      lastAudioUrlRef.current = null;
+    }
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -393,5 +405,5 @@ export function useAudioAnalyser(): UseAudioAnalyser {
     };
   }, [stopLoop]);
 
-  return { requestPermission, start, stop, isReady };
+  return { requestPermission, start, stop, isReady, discardCurrentAudio };
 }

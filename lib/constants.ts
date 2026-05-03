@@ -96,6 +96,7 @@ export const RT_FEEDBACK_DROP_DB = 3;
 // Storage keys (localStorage)
 export const STORAGE_KEY = "sayah_sessions";
 export const PB_KEY = "sayah_personal_best";
+export const SPEAK_COACH_CUES_KEY = "sayah_speak_coach_cues";
 
 // Zone colours — used by both the meter and the strip chart
 export const ZONE_COLORS = {

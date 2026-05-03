@@ -4,19 +4,29 @@ import { useEffect, useRef, useState } from "react";
 import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
 import { FinalStripChart } from "@/components/StripChart";
-import { formatSeconds } from "@/lib/format";
+import { formatSeconds, formatMinutesSeconds } from "@/lib/format";
 import { cancelSpeech } from "@/lib/tts";
 import { RepRating } from "@/components/RepRating";
 import type { RepResult } from "@/hooks/useSession";
 
 interface Props {
   result: RepResult;
+  durations: number[];
   onNext: () => void;
   onSeeResults: () => void;
+  onDiscardRecording: () => void;
 }
 
-export function RepResultScreen({ result, onNext, onSeeResults }: Props) {
+export function RepResultScreen({
+  result,
+  durations,
+  onNext,
+  onSeeResults,
+  onDiscardRecording,
+}: Props) {
   const isLast = result.repNumber >= TOTAL_REPS;
+  const totalSpeakingTime = durations.reduce((a, b) => a + b, 0);
+  const [discarded, setDiscarded] = useState(false);
 
   // ── Playback ──────────────────────────────────────────────────────────
   // Lets the patient hear their own voice — central to LSVT's "calibration"
@@ -53,8 +63,18 @@ export function RepResultScreen({ result, onNext, onSeeResults }: Props) {
     );
   };
 
+  const handleDiscard = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    onDiscardRecording();
+    setIsPlaying(false);
+    setDiscarded(true);
+  };
+
   return (
-    <div className="screen" style={{ gap: 16 }}>
+    <div className="screen rep-result-screen">
       <ProgressBar currentRep={result.repNumber} />
       <div className="content-wrapper">
         <div className="result-rep-number">
@@ -63,38 +83,53 @@ export function RepResultScreen({ result, onNext, onSeeResults }: Props) {
         <div className="result-duration">
           You held it for {formatSeconds(result.duration)}!
         </div>
+        <div className="result-running-total">
+          Total speaking time so far: {formatMinutesSeconds(totalSpeakingTime)}
+        </div>
 
-        {result.audioUrl && (
-          <button
-            type="button"
-            className="btn-playback"
-            onClick={handlePlayback}
-            aria-label="Play back your voice recording"
-          >
-            {isPlaying ? (
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <rect x="6" y="5" width="4" height="14" rx="1" />
-                <rect x="14" y="5" width="4" height="14" rx="1" />
-              </svg>
-            ) : (
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-            <span>{isPlaying ? "Playing…" : "Hear your voice"}</span>
-          </button>
+        {result.audioUrl && !discarded && (
+          <div className="playback-row">
+            <button
+              type="button"
+              className="btn-playback"
+              onClick={handlePlayback}
+              aria-label="Play back your voice recording"
+            >
+              {isPlaying ? (
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <rect x="6" y="5" width="4" height="14" rx="1" />
+                  <rect x="14" y="5" width="4" height="14" rx="1" />
+                </svg>
+              ) : (
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              <span>{isPlaying ? "Playing…" : "Hear your voice"}</span>
+            </button>
+            <button
+              type="button"
+              className="btn-discard-recording"
+              onClick={handleDiscard}
+            >
+              Discard recording
+            </button>
+          </div>
+        )}
+        {discarded && (
+          <p className="recording-discarded-note">Recording discarded.</p>
         )}
 
         <FinalStripChart buffer={result.stripBuffer} />
@@ -107,7 +142,6 @@ export function RepResultScreen({ result, onNext, onSeeResults }: Props) {
         <button
           className="btn-primary"
           onClick={isLast ? onSeeResults : onNext}
-          style={{ marginTop: 40 }}
           autoFocus
         >
           {isLast ? "See My Results" : "Next Round"}
