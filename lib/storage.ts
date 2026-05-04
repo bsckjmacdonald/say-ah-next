@@ -5,7 +5,13 @@
 // will hydrate-mismatch otherwise).
 // ============================================================================
 
-import { PB_KEY, SPEAK_COACH_CUES_KEY, STORAGE_KEY } from "./constants";
+import {
+  COACH_STORAGE_KEY,
+  DEVICE_OFFSET_KEY_PREFIX,
+  PB_KEY,
+  SPEAK_COACH_CUES_KEY,
+  STORAGE_KEY,
+} from "./constants";
 import type { SessionRecord } from "./types";
 
 const MAX_HISTORY = 30;
@@ -41,6 +47,29 @@ export function loadHistory(): SessionRecord[] {
   } catch {
     return [];
   }
+}
+
+export function loadCoachEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  const raw = window.localStorage.getItem(COACH_STORAGE_KEY);
+  return raw === null ? true : raw === "true";
+}
+
+export function saveCoachEnabled(value: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(COACH_STORAGE_KEY, String(value));
+}
+
+/** Returns the calibrated offset for this deviceId, or `fallback` if uncalibrated. */
+export function loadDeviceOffset(deviceId: string, fallback: number): number {
+  if (typeof window === "undefined") return fallback;
+  const raw = window.localStorage.getItem(DEVICE_OFFSET_KEY_PREFIX + deviceId);
+  return raw ? parseFloat(raw) : fallback;
+}
+
+export function saveDeviceOffset(deviceId: string, offset: number): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DEVICE_OFFSET_KEY_PREFIX + deviceId, String(offset));
 }
 
 export function saveSession(durations: number[]): void {

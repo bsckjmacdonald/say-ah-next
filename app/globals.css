@@ -1420,6 +1420,173 @@ svg {
 }
 
 /* ============================================================
+   HARDWARE LIMITED BANNER (ExerciseScreen)
+   Amber info strip — not an error, just a caveat about AGC.
+   ============================================================ */
+.hw-limited-banner {
+  background: rgba(244, 196, 52, 0.18);
+  border: 1px solid rgba(180, 140, 0, 0.25);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #6b4f00;
+  text-align: center;
+  max-width: 400px;
+  margin: 4px auto 0;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   CONSTRAINT DIAGNOSTIC (ExerciseScreen)
+   ============================================================ */
+.constraint-diagnostic {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--color-fg-soft);
+  text-align: center;
+  opacity: 0.75;
+  line-height: 1.8;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.constraint-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 8px;
+  white-space: nowrap;
+}
+
+.constraint-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.constraint-dot-good   { background: #34c759; }
+.constraint-dot-warn   { background: #f4c430; }
+.constraint-dot-neutral { background: #aaaaaa; }
+
+.constraint-device {
+  display: inline-block;
+  margin: 0 8px;
+  font-family: monospace;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ============================================================
+   COACH TOGGLE (WelcomeScreen full card + compact inline)
+   ============================================================ */
+.coach-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px auto 0;
+  max-width: 360px;
+  padding: 16px 20px;
+  background: rgba(42, 124, 124, 0.06);
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.coach-toggle-text {
+  font-size: 18px;
+  color: var(--color-fg);
+  line-height: 1.3;
+  text-align: left;
+}
+
+.coach-toggle-sub {
+  font-size: 13px;
+  color: var(--color-fg-soft);
+  margin-top: 3px;
+}
+
+.toggle-pill {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  border-radius: 16px;
+  background: #ccc;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-pill-on {
+  background: var(--color-primary);
+}
+
+.toggle-pill-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+
+.toggle-pill-on .toggle-pill-thumb {
+  transform: translateX(24px);
+}
+
+/* Compact inline toggle (PreRepScreen, RepResultScreen) */
+.coach-toggle-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  background: rgba(42, 124, 124, 0.06);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-user-select: none;
+  user-select: none;
+  margin: 0 auto;
+}
+
+.coach-toggle-compact:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.coach-toggle-compact-label {
+  font-size: 16px;
+  color: var(--color-fg-soft);
+}
+
+.toggle-pill-sm {
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+}
+
+.toggle-pill-thumb-sm {
+  width: 18px;
+  height: 18px;
+  top: 4px;
+  left: 4px;
+}
+
+.toggle-pill-on.toggle-pill-sm .toggle-pill-thumb-sm {
+  transform: translateX(18px);
+}
+
+/* ============================================================
    RESPONSIVE & ACCESSIBILITY
    ============================================================ */
 /* Most prior @media (max-width: 768px) overrides are obsolete now that body

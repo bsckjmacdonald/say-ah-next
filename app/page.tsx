@@ -13,6 +13,8 @@ import { TOTAL_REPS } from "@/lib/constants";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useSession, type RepResult } from "@/hooks/useSession";
 import { primeVoices, speakMessage, cancelSpeech } from "@/lib/tts";
+import { loadCoachEnabled, saveCoachEnabled } from "@/lib/storage";
+import { ConstraintDiagnostic } from "@/components/ConstraintDiagnostic";
 import { WelcomeScreen } from "@/components/screens/WelcomeScreen";
 import { MicPermissionScreen } from "@/components/screens/MicPermissionScreen";
 import { PreRepScreen } from "@/components/screens/PreRepScreen";
@@ -27,13 +29,20 @@ export default function Page() {
   const [screen, setScreen] = useState<ScreenId>("welcome");
   const [repResult, setRepResult] = useState<RepResult | null>(null);
   const [summaryMessage, setSummaryMessage] = useState("");
+  const [coachEnabled, setCoachEnabled] = useState(true);
 
   const session = useSession(TOTAL_REPS);
-  const analyser = useAudioAnalyser();
+  const analyser = useAudioAnalyser({ coachEnabled });
 
-  // Prime TTS voice list once on mount
+  // Hydrate persisted settings from localStorage after mount.
   useEffect(() => {
+    setCoachEnabled(loadCoachEnabled());
     primeVoices();
+  }, []);
+
+  const handleCoachToggle = useCallback((value: boolean) => {
+    setCoachEnabled(value);
+    saveCoachEnabled(value);
   }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -114,6 +123,8 @@ export default function Page() {
         <WelcomeScreen
           userName={session.userName}
           onUserNameChange={session.setUserName}
+          coachEnabled={coachEnabled}
+          onCoachToggle={handleCoachToggle}
           onBegin={handleBegin}
           onShowHistory={handleShowHistory}
         />
@@ -128,6 +139,8 @@ export default function Page() {
         <PreRepScreen
           currentRep={session.currentRep}
           tip={session.nextRepTip}
+          coachEnabled={coachEnabled}
+          onCoachToggle={handleCoachToggle}
           onStart={handleStartRep}
         />
       )}
@@ -143,6 +156,8 @@ export default function Page() {
         <RepResultScreen
           result={repResult}
           durations={session.durations}
+          coachEnabled={coachEnabled}
+          onCoachToggle={handleCoachToggle}
           onNext={handleNextRep}
           onSeeResults={handleSeeResults}
           onDiscardRecording={handleDiscardRecording}
@@ -161,6 +176,14 @@ export default function Page() {
         <HistoryScreen
           history={session.history}
           onBack={handleBackToWelcome}
+        />
+      )}
+      {(screen === "pre-rep" ||
+        screen === "exercise" ||
+        screen === "rep-result") && (
+        <ConstraintDiagnostic
+          status={analyser.constraintStatus}
+          deviceId={analyser.deviceId}
         />
       )}
       <FeedbackModal currentScreen={screen} />

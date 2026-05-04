@@ -2,14 +2,23 @@
 
 import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
+import { CoachToggle } from "@/components/CoachToggle";
 
 interface Props {
   currentRep: number;
   tip: string | null;
+  coachEnabled: boolean;
+  onCoachToggle: (value: boolean) => void;
   onStart: () => void;
 }
 
-export function PreRepScreen({ currentRep, tip, onStart }: Props) {
+export function PreRepScreen({
+  currentRep,
+  tip,
+  coachEnabled,
+  onCoachToggle,
+  onStart,
+}: Props) {
   return (
     <div className="screen pre-rep-screen">
       <ProgressBar currentRep={currentRep} />
@@ -24,7 +33,13 @@ export function PreRepScreen({ currentRep, tip, onStart }: Props) {
           Hold your phone about 12 in (30 cm) from your mouth.
         </p>
         {tip && <div className="pre-rep-tip">{tip}</div>}
-        <button className="btn-primary" onClick={onStart} autoFocus>
+        <CoachToggle enabled={coachEnabled} onToggle={onCoachToggle} />
+        <button
+          className="btn-primary"
+          onClick={onStart}
+          style={{ marginTop: 24 }}
+          autoFocus
+        >
           I&apos;m Ready — Start
         </button>
       </div>

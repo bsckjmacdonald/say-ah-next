@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { TOTAL_REPS } from "@/lib/constants";
-import { loadSpeakCoachCues, saveSpeakCoachCues } from "@/lib/storage";
+import { CoachToggle } from "@/components/CoachToggle";
 
 interface Props {
   userName: string;
   onUserNameChange: (name: string) => void;
+  coachEnabled: boolean;
+  onCoachToggle: (value: boolean) => void;
   onBegin: () => void;
   onShowHistory: () => void;
 }
@@ -14,23 +15,11 @@ interface Props {
 export function WelcomeScreen({
   userName,
   onUserNameChange,
+  coachEnabled,
+  onCoachToggle,
   onBegin,
   onShowHistory,
 }: Props) {
-  // Persisted opt-in for in-rep TTS coach cues. The on-screen text always
-  // shows; this toggle controls only whether the cue is also spoken.
-  // Hydrate from localStorage after mount — same pattern useSession uses for
-  // its persisted state (reading storage during render would SSR-mismatch).
-  const [speakCoachCues, setSpeakCoachCues] = useState(false);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSpeakCoachCues(loadSpeakCoachCues());
-  }, []);
-
-  const handleSpeakCoachCuesChange = (value: boolean) => {
-    setSpeakCoachCues(value);
-    saveSpeakCoachCues(value);
-  };
   return (
     <div className="screen welcome-screen">
       <button
@@ -97,21 +86,11 @@ export function WelcomeScreen({
             onChange={(e) => onUserNameChange(e.target.value)}
           />
         </div>
-        <div className="welcome-toggle-row">
-          <input
-            type="checkbox"
-            id="speak-coach-cues-toggle"
-            className="welcome-toggle-checkbox"
-            checked={speakCoachCues}
-            onChange={(e) => handleSpeakCoachCuesChange(e.target.checked)}
-          />
-          <label
-            htmlFor="speak-coach-cues-toggle"
-            className="welcome-toggle-label"
-          >
-            Speak coach cues during rounds
-          </label>
-        </div>
+        <CoachToggle
+          enabled={coachEnabled}
+          onToggle={onCoachToggle}
+          variant="full"
+        />
         <div className="button-group">
           <button className="btn-primary" onClick={onBegin}>
             Let&apos;s Begin

@@ -49,18 +49,16 @@ export const STRIP_MAX_POINTS = 36; // 36 × 0.5 s = 18 s of history shown
 // ============================================================================
 // dB SPL ESTIMATION
 // ============================================================================
-// Web Audio gives us linear amplitude (0–1) from the mic, NOT absolute sound
-// pressure. True dB SPL requires knowing the mic's sensitivity (mV/Pa) and
-// the signal-chain gain — neither is exposed by the browser. We apply a
-// fixed 94 dB offset (the standard 1 Pa reference) which produces
-// psychologically plausible readings (~50–70 dB at conversational distance
-// with a typical laptop mic at default gain).
+// Web Audio gives us linear amplitude from the mic. True dB SPL requires the
+// mic's sensitivity, which the browser doesn't expose. We derive the default
+// offset from the typical MEMS mic spec: 94 dB SPL ≈ −26 dBFS, so full-scale
+// (0 dBFS) ≈ 120 dB SPL.
 //
-// Treat the displayed value as a RELATIVE indicator useful for tracking
-// change within a session — not a calibrated clinical SPL measurement. If a
-// per-device calibration step is added later, change this offset to absorb
-// the user's reference reading.
-export const DB_SPL_CALIBRATION_OFFSET = 94;
+// Real devices vary ±5–10 dB from this; calibration (Phase 4) is required for
+// any quantitative clinical claim. The per-device calibrated offset, once
+// measured, replaces this default — it is stored in localStorage keyed by
+// deviceId (see lib/storage.ts).
+export const DB_SPL_CALIBRATION_OFFSET = 120;
 
 // Below this dB level the readout shows "—" (effectively silent / no signal).
 export const DB_SPL_DISPLAY_FLOOR = 30;
@@ -97,6 +95,8 @@ export const RT_FEEDBACK_DROP_DB = 3;
 export const STORAGE_KEY = "sayah_sessions";
 export const PB_KEY = "sayah_personal_best";
 export const SPEAK_COACH_CUES_KEY = "sayah_speak_coach_cues";
+export const COACH_STORAGE_KEY = "sayah_coach_enabled";
+export const DEVICE_OFFSET_KEY_PREFIX = "sayah_offset_";
 
 // Zone colours — used by both the meter and the strip chart
 export const ZONE_COLORS = {

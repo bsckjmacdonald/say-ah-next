@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RT_FEEDBACK_ENABLED, TOTAL_REPS } from "@/lib/constants";
 import { AudioMeter, AudioMeterHandle } from "@/components/AudioMeter";
+import { HardwareLimitedBanner } from "@/components/HardwareLimitedBanner";
 import {
   DurationDisplay,
   DurationDisplayHandle,
@@ -25,7 +26,7 @@ import {
   freshRealtimeState,
   type RealtimeFeedbackState,
 } from "@/lib/realtimeFeedback";
-import { loadSpeakCoachCues } from "@/lib/storage";
+import { loadCoachEnabled } from "@/lib/storage";
 import { speakMessage } from "@/lib/tts";
 import type { UseAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import type { RepCompletion } from "@/lib/types";
@@ -69,7 +70,7 @@ export function ExerciseScreen({
   const coachCueTimerRef = useRef<number | null>(null);
   const speakCoachCuesRef = useRef(false);
   useEffect(() => {
-    speakCoachCuesRef.current = loadSpeakCoachCues();
+    speakCoachCuesRef.current = loadCoachEnabled();
   }, []);
 
   // Start the analyser loop on mount, restart whenever the rep number changes.
@@ -179,6 +180,7 @@ export function ExerciseScreen({
           {tip}
         </div>
       )}
+      <HardwareLimitedBanner status={analyser.constraintStatus} />
       <DurationDisplay ref={durationRef} />
       <AudioMeter ref={meterRef} />
       <LiveStripChart ref={stripRef} />

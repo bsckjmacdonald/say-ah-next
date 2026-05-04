@@ -8,10 +8,13 @@ import { formatSeconds, formatMinutesSeconds } from "@/lib/format";
 import { cancelSpeech } from "@/lib/tts";
 import { RepRating } from "@/components/RepRating";
 import type { RepResult } from "@/hooks/useSession";
+import { CoachToggle } from "@/components/CoachToggle";
 
 interface Props {
   result: RepResult;
   durations: number[];
+  coachEnabled: boolean;
+  onCoachToggle: (value: boolean) => void;
   onNext: () => void;
   onSeeResults: () => void;
   onDiscardRecording: () => void;
@@ -20,6 +23,8 @@ interface Props {
 export function RepResultScreen({
   result,
   durations,
+  coachEnabled,
+  onCoachToggle,
   onNext,
   onSeeResults,
   onDiscardRecording,
@@ -139,9 +144,11 @@ export function RepResultScreen({
           category={result.category}
           duration={result.duration}
         />
+        <CoachToggle enabled={coachEnabled} onToggle={onCoachToggle} />
         <button
           className="btn-primary"
           onClick={isLast ? onSeeResults : onNext}
+          style={{ marginTop: 24 }}
           autoFocus
         >
           {isLast ? "See My Results" : "Next Round"}

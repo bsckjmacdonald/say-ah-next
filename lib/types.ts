@@ -2,6 +2,15 @@
 // SAY AH — SHARED TYPES
 // ============================================================================
 
+// ---- Audio constraint verification ----
+export type ConstraintStatus = "off" | "on" | "unknown";
+
+export interface AudioConstraintStatus {
+  agc: ConstraintStatus;
+  aec: ConstraintStatus;
+  noiseSuppression: ConstraintStatus;
+}
+
 export type ScreenId =
   | "welcome"
   | "mic-permission"
