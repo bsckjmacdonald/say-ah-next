@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -62,27 +62,29 @@ function Stars({
   label: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#555" }}>
-      <span style={{ minWidth: 80 }}>{label}</span>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 20,
-            color: n <= value ? "#f4a830" : "#ccc",
-            padding: "2px 1px",
-            lineHeight: 1,
-          }}
-          aria-label={`${n} star`}
-        >
-          ★
-        </button>
-      ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ fontSize: 11, color: "#777", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</span>
+      <div style={{ display: "flex", gap: 2 }}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 22,
+              color: n <= value ? "#f4a830" : "#ddd",
+              padding: "0 1px",
+              lineHeight: 1,
+            }}
+            aria-label={`${n} star`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -447,7 +449,7 @@ const styles = {
   } as React.CSSProperties,
   clipGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
     gap: 12,
   } as React.CSSProperties,
   clipCard: {
