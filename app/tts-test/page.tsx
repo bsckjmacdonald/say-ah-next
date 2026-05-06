@@ -38,10 +38,9 @@ interface Clip {
 
 interface Rating { naturalness: number; warmth: number; }
 
-// ── Star row ──────────────────────────────────────────────────────────────────
-// Full-width row: label (fixed 72px) + five 36×36 buttons. Total ≈ 72+180+gaps.
-// Works at any viewport width ≥ 320px.
-function StarRow({
+// ── Star scale ────────────────────────────────────────────────────────────────
+// Vertical stack: row n shows n stars. Click any row to select that rating.
+function StarScale({
   label,
   value,
   onChange,
@@ -51,8 +50,8 @@ function StarRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 0, marginTop: 6 }}>
-      <span style={{ width: 72, flexShrink: 0, fontSize: 12, color: "#666" }}>
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 80 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4, textAlign: "center" }}>
         {label}
       </span>
       {[1, 2, 3, 4, 5].map((n) => (
@@ -60,22 +59,22 @@ function StarRow({
           key={n}
           type="button"
           onClick={() => onChange(n)}
-          aria-label={`${label} ${n} star`}
+          aria-label={`${label} ${n} star${n !== 1 ? "s" : ""}`}
           style={{
-            width: 36,
-            height: 36,
-            flexShrink: 0,
-            background: "none",
-            border: "none",
+            display: "flex",
+            alignItems: "center",
+            padding: "3px 6px",
+            marginBottom: 2,
+            border: `1px solid ${n === value ? "#f59e0b" : "transparent"}`,
+            borderRadius: 4,
             cursor: "pointer",
-            fontSize: 24,
-            lineHeight: "36px",
-            textAlign: "center",
-            padding: 0,
-            color: n <= value ? "#f59e0b" : "#d1d5db",
+            background: n === value ? "#fef3c7" : "transparent",
+            gap: 1,
           }}
         >
-          ★
+          {Array.from({ length: n }, (_, i) => (
+            <span key={i} style={{ fontSize: 14, color: "#f59e0b", lineHeight: 1 }}>★</span>
+          ))}
         </button>
       ))}
     </div>
@@ -302,10 +301,10 @@ export default function TtsTestPage() {
                   )}
                 </div>
 
-                {/* Right: star ratings */}
-                <div style={{ flexShrink: 0 }}>
-                  <StarRow label="Natural" value={r.naturalness} onChange={(v) => rate(key, "naturalness", v)} />
-                  <StarRow label="Warm"    value={r.warmth}       onChange={(v) => rate(key, "warmth", v)} />
+                {/* Right: star scales */}
+                <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+                  <StarScale label="Natural" value={r.naturalness} onChange={(v) => rate(key, "naturalness", v)} />
+                  <StarScale label="Warm"    value={r.warmth}       onChange={(v) => rate(key, "warmth", v)} />
                 </div>
               </div>
             );
