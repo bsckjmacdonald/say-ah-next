@@ -76,8 +76,15 @@ function Stars({
               cursor: "pointer",
               fontSize: 22,
               color: n <= value ? "#f4a830" : "#ddd",
-              padding: "0 1px",
+              padding: 0,
+              margin: 0,
               lineHeight: 1,
+              width: 24,
+              height: 24,
+              minWidth: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
             aria-label={`${n} star`}
           >
