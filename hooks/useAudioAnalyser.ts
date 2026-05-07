@@ -26,6 +26,7 @@
 // ============================================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { buildAWeightingCoefficients } from "@/lib/aWeighting";
 import {
   MAX_REP_DURATION_SECONDS,
   OFFSET_HOLD_MS,
@@ -63,11 +64,10 @@ function freshAccumulator(): RepAccumulator {
   };
 }
 
-function computeRMS(dataArray: Uint8Array<ArrayBuffer>): number {
+function computeRMS(dataArray: Float32Array<ArrayBuffer>): number {
   let sum = 0;
   for (let i = 0; i < dataArray.length; i++) {
-    const n = (dataArray[i] - 128) / 128;
-    sum += n * n;
+    sum += dataArray[i] * dataArray[i];
   }
   return Math.min(1.0, Math.sqrt(sum / dataArray.length) * 2);
 }
@@ -133,7 +133,7 @@ export function useAudioAnalyser({
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const dataArrayRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const repRef = useRef<RepAccumulator>(freshAccumulator());
   const callbacksRef = useRef<AudioAnalyserCallbacks>({});
@@ -215,10 +215,20 @@ export function useAudioAnalyser({
       const analyser = audioContextRef.current.createAnalyser();
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.3;
-      source.connect(analyser);
+
+      // Phase 2: A-weighting (IEC 61672-1) — filter runs on the audio thread
+      // before the analyser so computeRMS sees the perceptually weighted signal.
+      const { feedforward, feedback } = buildAWeightingCoefficients(
+        audioContextRef.current.sampleRate,
+      );
+      const aWeightFilter =
+        audioContextRef.current.createIIRFilter(feedforward, feedback);
+      source.connect(aWeightFilter);
+      aWeightFilter.connect(analyser);
+
       analyserRef.current = analyser;
-      dataArrayRef.current = new Uint8Array(
-        new ArrayBuffer(analyser.frequencyBinCount),
+      dataArrayRef.current = new Float32Array(
+        new ArrayBuffer(analyser.fftSize * Float32Array.BYTES_PER_ELEMENT),
       );
 
       return true;
@@ -336,7 +346,7 @@ export function useAudioAnalyser({
       const data = dataArrayRef.current;
       if (!analyser || !data) return;
 
-      analyser.getByteTimeDomainData(data);
+      analyser.getFloatTimeDomainData(data);
       const rms = computeRMS(data);
       const r = repRef.current;
       const cbs = callbacksRef.current;
