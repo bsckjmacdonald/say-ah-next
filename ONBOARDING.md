@@ -76,6 +76,21 @@ Pushes to `main` deploy to Vercel production. PR branches get preview URLs autom
 - Look at `lib/feedback.ts` and `lib/realtimeFeedback.ts` to see how rep scoring works
 - Run a full session locally to see the UX before changing anything
 
+## TTS — current state and roadmap
+
+The coach voice currently uses the browser's built-in Web Speech API (`lib/tts.ts`). This is interim: it sounds robotic, and LSVT clinicians need something warmer and more energetic.
+
+A blinded model evaluation with LSVT experts compared four open-source neural TTS models (Kokoro-82M, Parler-TTS Mini, StyleTTS 2, F5-TTS) across five clinical coaching phrases. Full write-up including model selection rationale, environment setup, and normalization pipeline:
+
+**`~/Documents/Claude/LSVT/projects/lsvt_voice_test/WRITEUP.md`**
+
+The Phase 1 listening test page lives at `/tts-test`. After a model is selected, the integration plan is: pre-generate all coaching phrases at build time → serve as static WAVs → wire into `lib/tts.ts` replacing the Web Speech calls.
+
+## Known platform limitations
+
+**iOS / iPhone — SPL accuracy is not achievable in a web app.**
+All browsers on iOS (Safari, Chrome, Firefox) are forced to use Apple's WebKit engine. iOS applies automatic gain control (AGC) at the OS hardware level; the WebAudio `autoGainControl: false` constraint is silently ignored and cannot be verified via `getSettings()`. This causes the raw mic signal to fluctuate even when the user holds a steady voice, making calibrated dBSPL readings unreliable. There is no browser-side fix. Correct SPL functionality on iPhone requires a native app (React Native or Swift) with full `AVAudioSession` control. Do not surface this to users in the UI — the app's primary users are elderly people with Parkinson's disease and cannot act on it.
+
 ## Questions
 
 Ping me (Bob) on whatever we use for chat. For anything context-heavy, drop a comment on the PR or open a GitHub issue so it's captured.

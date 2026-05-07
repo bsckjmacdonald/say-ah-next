@@ -1,3 +1,6 @@
+// Phase 1 blind listening test — 4 Kokoro voices + Web Speech baseline.
+// LSVT expert ratings and model selection rationale:
+// ~/Documents/Claude/LSVT/projects/lsvt_voice_test/WRITEUP.md
 "use client";
 
 import { useCallback, useRef, useState } from "react";

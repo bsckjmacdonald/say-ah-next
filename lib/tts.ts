@@ -38,6 +38,9 @@ export interface SpeakOptions {
 // TTS with per-phrase emphasis. That's the proper fix; this is an interim
 // improvement so realtime coach cues sound more energetic than the long
 // post-rep encouragement messages.
+//
+// TTS model evaluation (blinded clinician rating, 4 models):
+// ~/Documents/Claude/LSVT/projects/lsvt_voice_test/WRITEUP.md
 
 export function speakMessage(text: string, options?: SpeakOptions): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
