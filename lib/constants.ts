@@ -34,17 +34,19 @@ export const STRAIN_THRESHOLD = 0.85;
 export const STRAIN_DURATION_PERCENT = 0.20; // fraction of rep at high level
 
 // Audio meter zone thresholds (fraction of full scale)
-export const METER_SOFT_THRESHOLD = 0.03; // below = "too soft"   → yellow (was 0.06)
-export const METER_LOUD_THRESHOLD = 0.09; // above = "quite loud" → red/orange (was 0.18)
+// Zones cover 15 % / 70 % / 15 % of CHART_MAX_LEVEL so the green target
+// band is easy to stay in — feedback indicated the prior 24/48/28 split
+// made the target band feel too narrow.
+export const METER_SOFT_THRESHOLD = 0.019; // below = "too soft"   → yellow (15 % of scale)
+export const METER_LOUD_THRESHOLD = 0.106; // above = "quite loud" → red/orange (85 % of scale)
 
 // Strip / result chart y-axis ceiling — levels above this are clipped to the
-// top edge. Halved with the meter thresholds so the three zones still fill
-// the chart in the same proportions (soft 24 %, target 48 %, loud 28 %).
+// top edge. Zones fill the chart: soft 15 %, target 70 %, loud 15 %.
 export const CHART_MAX_LEVEL = 0.125;
 
 // Strip chart settings
-export const STRIP_INTERVAL_MS = 500; // average window (0.5 s)
-export const STRIP_MAX_POINTS = 36; // 36 × 0.5 s = 18 s of history shown
+export const STRIP_INTERVAL_MS = 1000; // average window (1 s) — 1 Hz update rate
+export const STRIP_MAX_POINTS = 30; // 30 × 1 s = 30 s max history (matches MAX_REP_DURATION)
 
 // ============================================================================
 // dB SPL ESTIMATION

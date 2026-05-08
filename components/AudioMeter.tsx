@@ -167,26 +167,17 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
 
   return (
     <div className="audio-meter-wrapper">
-      <div className="db-readout-wrapper">
-        <div ref={dbReadoutRef} className="db-readout">
-          —
+      <div className="meter-track-wrapper">
+        <div className="audio-meter-track">
+          <div ref={fillRef} className="audio-meter-fill pulsing" />
         </div>
-        <div className="db-readout-label">SPL (est.)</div>
+        <div ref={peakRef} className="meter-peak-marker" />
+        <div className="meter-tick meter-tick-high" />
+        <div className="meter-tick meter-tick-low" />
       </div>
-      <div className="meter-with-labels">
-        <div className="meter-track-wrapper">
-          <div className="audio-meter-track">
-            <div ref={fillRef} className="audio-meter-fill pulsing" />
-          </div>
-          <div ref={peakRef} className="meter-peak-marker" />
-          <div className="meter-tick meter-tick-high" />
-          <div className="meter-tick meter-tick-low" />
-        </div>
-        <div className="meter-zone-labels">
-          <div className="zone-label zone-loud">Quite loud</div>
-          <div className="zone-label zone-target">Target range</div>
-          <div className="zone-label zone-soft">Too soft</div>
-        </div>
+      <div className="db-readout-badge">
+        <div ref={dbReadoutRef} className="db-readout">—</div>
+        <div className="db-readout-label">SPL (est.)</div>
       </div>
     </div>
   );
