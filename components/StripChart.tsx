@@ -4,10 +4,10 @@
 // StripChart — canvas-based zone-banded loudness history
 //
 // Two variants:
-//   - Live (on the exercise screen) — small, no time axis. Updated via the
-//     imperative `draw` ref each time a new 0.5 s point is committed.
-//   - Final (on the result screen) — larger, with time axis. Pass the
-//     completed buffer as `buffer` and let it draw on mount.
+//   - Live (on the exercise screen) — updated via imperative `draw` ref.
+//     x-axis starts at 10 s and ratchets up in 5 s steps as the rep grows.
+//   - Final (on the result screen) — drawn from the completed buffer on mount.
+//     Same ratcheting scale so axes match what the user saw during the rep.
 // ============================================================================
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
@@ -15,11 +15,18 @@ import {
   CHART_MAX_LEVEL,
   METER_LOUD_THRESHOLD,
   METER_SOFT_THRESHOLD,
+  STRIP_INTERVAL_MS,
   STRIP_MAX_POINTS,
 } from "@/lib/constants";
 
+// How many x-axis points (seconds) to show. Starts at 10 s, ratchets up in
+// 5 s increments once buffer grows beyond the current ceiling.
+function computeVisiblePoints(n: number): number {
+  return Math.min(STRIP_MAX_POINTS, Math.max(10, Math.ceil(n / 5) * 5));
+}
+
 interface RenderOpts {
-  dotRadius: number;
+  visiblePoints: number;
   timeLabels: boolean;
 }
 
@@ -30,35 +37,23 @@ function renderLoudnessChart(
   buffer: number[],
   opts: RenderOpts,
 ) {
-  const { dotRadius, timeLabels } = opts;
-  const labelH = timeLabels ? 18 : 0;
-  const cH = H - labelH;
+  const { visiblePoints, timeLabels } = opts;
+  // cH = full canvas height — time labels are drawn inset (no reserved strip).
+  const cH = H;
 
   ctx.clearRect(0, 0, W, H);
 
   const scl = (lvl: number) =>
     Math.min(Math.max(lvl, 0), CHART_MAX_LEVEL) / CHART_MAX_LEVEL;
 
-  // Zone background bands. Alpha bumped from 0.18 → 0.28 so the zones are
-  // visibly distinct on cream backgrounds without overpowering the line.
   const softFrac = scl(METER_SOFT_THRESHOLD);
   const loudFrac = scl(METER_LOUD_THRESHOLD);
+
+  // Zone background bands
   const bands = [
-    {
-      yFrac: 0,
-      hFrac: 1 - loudFrac,
-      color: "rgba(224,123,90,0.28)",
-    },
-    {
-      yFrac: 1 - loudFrac,
-      hFrac: loudFrac - softFrac,
-      color: "rgba(52,199,89,0.28)",
-    },
-    {
-      yFrac: 1 - softFrac,
-      hFrac: softFrac,
-      color: "rgba(244,196,52,0.28)",
-    },
+    { yFrac: 0,            hFrac: 1 - loudFrac,          color: "rgba(224,123,90,0.28)" },
+    { yFrac: 1 - loudFrac, hFrac: loudFrac - softFrac,   color: "rgba(52,199,89,0.28)"  },
+    { yFrac: 1 - softFrac, hFrac: softFrac,               color: "rgba(244,196,52,0.28)" },
   ];
   bands.forEach((z) => {
     ctx.fillStyle = z.color;
@@ -81,34 +76,47 @@ function renderLoudnessChart(
 
   // Zone labels (right-aligned inside chart area)
   ctx.save();
-  ctx.font = `${timeLabels ? 11 : 10}px -apple-system,"SF Pro Text",Arial,sans-serif`;
+  ctx.font = '10px -apple-system,"SF Pro Text",Arial,sans-serif';
   ctx.textAlign = "right";
-  const labels = [
-    {
-      text: "quite loud",
-      y: (cH * (1 - loudFrac)) / 2,
-      color: "rgba(192,78,38,0.65)",
-    },
-    {
-      text: "target",
-      y: cH * (1 - (loudFrac + softFrac) / 2),
-      color: "rgba(26,106,26,0.65)",
-    },
-    {
-      text: "too soft",
-      y: cH * (1 - softFrac / 2),
-      color: "rgba(138,104,0,0.65)",
-    },
+  const zoneLabels = [
+    { text: "quite loud", y: (cH * (1 - loudFrac)) / 2,            color: "rgba(192,78,38,0.65)"  },
+    { text: "target",     y: cH * (1 - (loudFrac + softFrac) / 2), color: "rgba(26,106,26,0.65)"  },
+    { text: "too soft",   y: cH * (1 - softFrac / 2),              color: "rgba(138,104,0,0.65)"  },
   ];
-  labels.forEach((l) => {
+  zoneLabels.forEach((l) => {
     ctx.fillStyle = l.color;
     ctx.fillText(l.text, W - 5, l.y + 4);
   });
   ctx.restore();
 
+  // Time axis labels — drawn inset at the very bottom of the canvas so they
+  // don't consume height (keeping the zone bands flush to the canvas edges).
+  if (timeLabels) {
+    ctx.save();
+    ctx.font = '10px -apple-system,"SF Pro Text",Arial,sans-serif';
+    ctx.fillStyle = "rgba(0,0,0,0.38)";
+    const secPerPoint = STRIP_INTERVAL_MS / 1000;
+    const xStep = W / visiblePoints;
+    for (let p = 0; p <= visiblePoints; p += 5) {
+      const x = p * xStep;
+      const label = `${Math.round(p * secPerPoint)}s`;
+      if (p === 0) {
+        ctx.textAlign = "left";
+        ctx.fillText(label, 2, H - 4);
+      } else if (p === visiblePoints) {
+        ctx.textAlign = "right";
+        ctx.fillText(label, W - 2, H - 4);
+      } else {
+        ctx.textAlign = "center";
+        ctx.fillText(label, x, H - 4);
+      }
+    }
+    ctx.restore();
+  }
+
   if (!buffer || buffer.length === 0) return;
 
-  const xStep = W / STRIP_MAX_POINTS;
+  const xStep = W / visiblePoints;
   const lvlToY = (lvl: number) => cH * (1 - scl(lvl));
   const zoneClr = (lvl: number) => {
     if (lvl < METER_SOFT_THRESHOLD) return "#a88a00";
@@ -116,55 +124,56 @@ function renderLoudnessChart(
     return "#a8401e";
   };
 
-  // Filled area under the curve
-  ctx.beginPath();
-  ctx.moveTo(0, cH);
-  buffer.forEach((lvl, i) => ctx.lineTo(i * xStep, lvlToY(lvl)));
-  ctx.lineTo((buffer.length - 1) * xStep, cH);
-  ctx.closePath();
-  ctx.fillStyle = "rgba(42,124,124,0.13)";
-  ctx.fill();
+  const pts = buffer.map((lvl, i) => ({ x: i * xStep, y: lvlToY(lvl) }));
+  const n = pts.length;
 
-  // Line segments coloured by zone. Stroke widened from 2.5 → 3 to read at
-  // a glance on the larger graph height.
-  ctx.lineWidth = 3;
+  // Smooth zone-coloured line — quadratic bezier through midpoints, no dots, no fill.
+  ctx.lineWidth = 4.5;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  for (let i = 1; i < buffer.length; i++) {
-    ctx.beginPath();
-    ctx.moveTo((i - 1) * xStep, lvlToY(buffer[i - 1]));
-    ctx.lineTo(i * xStep, lvlToY(buffer[i]));
-    ctx.strokeStyle = zoneClr(buffer[i]);
-    ctx.stroke();
-  }
 
-  // Dots at each 0.5 s point
-  buffer.forEach((lvl, i) => {
-    const x = i * xStep;
-    const y = lvlToY(lvl);
-    const isLast = i === buffer.length - 1;
+  if (n === 1) {
     ctx.beginPath();
-    ctx.arc(x, y, isLast ? dotRadius * 1.5 : dotRadius, 0, Math.PI * 2);
-    ctx.fillStyle = zoneClr(lvl);
+    ctx.arc(pts[0].x, pts[0].y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = zoneClr(buffer[0]);
     ctx.fill();
-    if (isLast) {
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 1.5;
+  } else if (n === 2) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo(pts[1].x, pts[1].y);
+    ctx.strokeStyle = zoneClr(buffer[1]);
+    ctx.stroke();
+  } else {
+    // First half-segment: pts[0] → midpoint(0,1)
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo((pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2);
+    ctx.strokeStyle = zoneClr(buffer[0]);
+    ctx.stroke();
+    // Interior segments: midpoint(i-1,i) → midpoint(i,i+1) via bezier at pts[i]
+    for (let i = 1; i < n - 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(
+        (pts[i - 1].x + pts[i].x) / 2,
+        (pts[i - 1].y + pts[i].y) / 2,
+      );
+      ctx.quadraticCurveTo(
+        pts[i].x, pts[i].y,
+        (pts[i].x + pts[i + 1].x) / 2,
+        (pts[i].y + pts[i + 1].y) / 2,
+      );
+      ctx.strokeStyle = zoneClr(buffer[i]);
       ctx.stroke();
     }
-  });
-
-  // Time axis labels
-  if (timeLabels) {
-    ctx.save();
-    ctx.font = '11px -apple-system,"SF Pro Text",Arial,sans-serif';
-    ctx.fillStyle = "rgba(0,0,0,0.38)";
-    for (let p = 0; p < STRIP_MAX_POINTS; p += 10) {
-      const x = p * xStep;
-      ctx.textAlign = p === 0 ? "left" : "center";
-      ctx.fillText(p / 2 + "s", p === 0 ? 2 : x, H - 3);
-    }
-    ctx.restore();
+    // Last half-segment: midpoint(n-2,n-1) → pts[n-1]
+    ctx.beginPath();
+    ctx.moveTo(
+      (pts[n - 2].x + pts[n - 1].x) / 2,
+      (pts[n - 2].y + pts[n - 1].y) / 2,
+    );
+    ctx.lineTo(pts[n - 1].x, pts[n - 1].y);
+    ctx.strokeStyle = zoneClr(buffer[n - 1]);
+    ctx.stroke();
   }
 }
 
@@ -186,13 +195,13 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
       if (!canvas) return;
       if (!canvas.width || canvas.width !== canvas.offsetWidth) {
         canvas.width = canvas.offsetWidth || 480;
-        canvas.height = canvas.offsetHeight || 88;
+        canvas.height = canvas.offsetHeight || 200;
       }
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
-        dotRadius: 3,
-        timeLabels: false,
+        visiblePoints: computeVisiblePoints(buffer.length),
+        timeLabels: true,
       });
     };
 
@@ -219,9 +228,6 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
     return (
       <div className="strip-chart-wrapper">
         <canvas ref={canvasRef} className="strip-chart" />
-        <div className="strip-chart-label">
-          Loudness over time this round
-        </div>
       </div>
     );
   },
@@ -241,7 +247,7 @@ export function FinalStripChart({ buffer }: { buffer: number[] }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
-      dotRadius: 4.5,
+      visiblePoints: computeVisiblePoints(buffer.length),
       timeLabels: true,
     });
   }, [buffer]);

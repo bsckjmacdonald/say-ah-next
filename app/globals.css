@@ -425,32 +425,45 @@ svg {
 }
 
 /* ============================================================
-   AUDIO METER (vertical, zone-aware) + dB readout
+   METER + CHART ROW — thermometer left, strip chart right,
+   zone boundaries pixel-aligned between the two.
+   ============================================================ */
+.meter-chart-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: var(--space-y-sm) auto;
+}
+
+/* ============================================================
+   AUDIO METER (vertical, zone-aware) + dB readout badge
    ============================================================ */
 .audio-meter-wrapper {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  gap: var(--space-y-sm);
-  margin: var(--space-y-sm) auto;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.db-readout-wrapper {
+/* dB readout sits below the track as a compact badge */
+.db-readout-badge {
   text-align: center;
   line-height: 1;
 }
 .db-readout {
-  font-size: clamp(22px, 4svh, 36px);
+  font-size: clamp(14px, 2.4svh, 22px);
   font-weight: 700;
   color: var(--color-primary);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
 }
 .db-readout-label {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-fg-soft);
-  margin-top: 4px;
+  margin-top: 3px;
   letter-spacing: 0.3px;
 }
 
@@ -470,16 +483,12 @@ svg {
   z-index: 2;
 }
 
-.meter-with-labels {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
+/* .meter-with-labels removed — AudioMeter is now a flat column */
 
 .meter-track-wrapper {
   position: relative;
   width: clamp(36px, 7svh, 56px);
-  height: clamp(90px, 18svh, 200px);
+  height: clamp(160px, 30svh, 280px);
   flex-shrink: 0;
 }
 
@@ -495,10 +504,10 @@ svg {
   background: linear-gradient(
     0deg,
     rgba(244, 196, 52, 0.22) 0%,
-    rgba(244, 196, 52, 0.22) 25%,
-    rgba(52, 199, 89, 0.22) 25%,
-    rgba(52, 199, 89, 0.22) 70%,
-    rgba(224, 123, 90, 0.22) 70%,
+    rgba(244, 196, 52, 0.22) 15%,
+    rgba(52, 199, 89, 0.22) 15%,
+    rgba(52, 199, 89, 0.22) 85%,
+    rgba(224, 123, 90, 0.22) 85%,
     rgba(224, 123, 90, 0.22) 100%
   );
 }
@@ -513,10 +522,10 @@ svg {
   border-radius: 1px;
 }
 .meter-tick-low {
-  bottom: 24%;
+  bottom: 15%;
 }
 .meter-tick-high {
-  bottom: 72%;
+  bottom: 85%;
 }
 
 .audio-meter-fill {
@@ -543,35 +552,8 @@ svg {
   }
 }
 
-.meter-zone-labels {
-  height: 200px;
-  display: grid;
-  grid-template-rows: 28% 48% 24%;
-}
-
-.zone-label {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
-  padding-left: 2px;
-  white-space: nowrap;
-}
-
-.zone-loud {
-  color: #c04e26;
-  align-items: flex-start;
-  padding-top: 4px;
-}
-.zone-target {
-  color: #1a6a1a;
-}
-.zone-soft {
-  color: #8a6800;
-  align-items: flex-end;
-  padding-bottom: 4px;
-}
+/* .meter-zone-labels and zone-label variants removed — zone labels are
+   now rendered inside the strip chart canvas */
 
 /* ============================================================
    DURATION DISPLAY
@@ -664,26 +646,17 @@ svg {
 }
 
 .strip-chart-wrapper {
-  width: 100%;
-  max-width: 480px;
-  margin: 4px auto 0;
+  flex: 1;
+  min-width: 0;
 }
 .strip-chart {
   display: block;
   width: 100%;
-  /* Scales between very short viewports (mobile landscape) and tall desktops.
-     Floor of 70px keeps zone bands legible; ceiling caps growth. */
-  height: clamp(70px, 15svh, 180px);
+  /* Height matches thermometer track exactly so zone boundaries align. */
+  height: clamp(160px, 30svh, 280px);
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: transparent;
-}
-.strip-chart-label {
-  font-size: clamp(11px, 1.6svh, 13px);
-  color: var(--color-fg-soft);
-  text-align: center;
-  margin-top: 2px;
-  letter-spacing: 0.2px;
 }
 
 .result-rep-number {

@@ -182,8 +182,10 @@ export function ExerciseScreen({
       )}
       <HardwareLimitedBanner status={analyser.constraintStatus} />
       <DurationDisplay ref={durationRef} />
-      <AudioMeter ref={meterRef} />
-      <LiveStripChart ref={stripRef} />
+      <div className="meter-chart-row">
+        <AudioMeter ref={meterRef} />
+        <LiveStripChart ref={stripRef} />
+      </div>
       <button
         ref={stopBtnRef}
         className="btn-secondary"
