@@ -60,7 +60,7 @@ export const STRIP_MAX_POINTS = 30; // 30 × 1 s = 30 s max history (matches MAX
 // any quantitative clinical claim. The per-device calibrated offset, once
 // measured, replaces this default — it is stored in localStorage keyed by
 // deviceId (see lib/storage.ts).
-export const DB_SPL_CALIBRATION_OFFSET = 120;
+export const DB_SPL_CALIBRATION_OFFSET = 90;
 
 // Below this dB level the readout shows "—" (effectively silent / no signal).
 export const DB_SPL_DISPLAY_FLOOR = 30;
