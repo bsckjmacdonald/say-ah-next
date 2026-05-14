@@ -11,7 +11,8 @@
 //
 // dB SPL caveat: see lib/constants.ts — the displayed value is an estimate
 // derived from RMS + a fixed calibration offset, not a true calibrated SPL
-// reading. The label says "SPL (est.)" to make this clear in the UI.
+// reading. The visible state label ("Listening… / +N dB to start / Recording")
+// gives the patient an actionable cue without exposing the calibration caveat.
 // ============================================================================
 
 import { forwardRef, useImperativeHandle, useRef } from "react";
@@ -20,12 +21,15 @@ import {
   DB_SPL_DISPLAY_FLOOR,
   METER_LOUD_THRESHOLD,
   METER_SOFT_THRESHOLD,
+  ONSET_THRESHOLD,
   ZONE_COLORS,
 } from "@/lib/constants";
 import { rmsToDbSpl } from "@/lib/audio";
 
 export interface AudioMeterHandle {
   setLevel: (rawLevel: number) => void;
+  /** Flip to true once the analyser fires onset; locks the label to "Recording". */
+  setOnsetDetected: (detected: boolean) => void;
   reset: () => void;
 }
 
@@ -40,6 +44,21 @@ const PEAK_DECAY_PER_SEC = CHART_MAX_LEVEL * 0.5;
 // through at ~22 % of its peak; a sustained 500 ms hold passes at ~71 %.
 const PEAK_INPUT_SMOOTH_ALPHA = 0.04;
 
+// dB SPL value the patient needs to reach for the chart to start drawing.
+// Derived once from the same RMS threshold the analyser uses for onset.
+const ONSET_DB_SPL = rmsToDbSpl(ONSET_THRESHOLD);
+
+type LabelState =
+  | { kind: "listening" }
+  | { kind: "to_start"; gap: number }
+  | { kind: "recording" };
+
+function labelStateEqual(a: LabelState, b: LabelState): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "to_start" && b.kind === "to_start") return a.gap === b.gap;
+  return true;
+}
+
 export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
   _props,
   ref,
@@ -47,6 +66,7 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
   const fillRef = useRef<HTMLDivElement>(null);
   const peakRef = useRef<HTMLDivElement>(null);
   const dbReadoutRef = useRef<HTMLDivElement>(null);
+  const dbLabelRef = useRef<HTMLDivElement>(null);
 
   // Visual smoothing — asymmetric exponential moving average. Same idea as
   // the prototype: snappy onset, gentler fall, so the bar settles in ~300 ms
@@ -67,6 +87,39 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
   // actually changes. Avoids hammering the DOM at 60 fps when the value is
   // hovering between, say, 61.4 and 61.6.
   const lastDbDisplayRef = useRef<number | null>(null);
+
+  // Onset latch — once the analyser declares onset, the label sticks to
+  // "Recording" even if the level dips back under ONSET_THRESHOLD mid-rep.
+  // This prevents the badge from flickering between states during natural
+  // dips in phonation.
+  const onsetDetectedRef = useRef(false);
+
+  // Cache the last label state we wrote so we only touch the DOM when the
+  // patient-visible message actually changes.
+  const lastLabelStateRef = useRef<LabelState>({ kind: "listening" });
+
+  const applyLabelState = (state: LabelState) => {
+    const label = dbLabelRef.current;
+    if (!label) return;
+    if (labelStateEqual(lastLabelStateRef.current, state)) return;
+    lastLabelStateRef.current = state;
+
+    label.classList.remove("is-listening", "is-to-start", "is-recording");
+    switch (state.kind) {
+      case "listening":
+        label.textContent = "Listening…";
+        label.classList.add("is-listening");
+        break;
+      case "to_start":
+        label.textContent = `+${state.gap} dB to start`;
+        label.classList.add("is-to-start");
+        break;
+      case "recording":
+        label.textContent = "Recording";
+        label.classList.add("is-recording");
+        break;
+    }
+  };
 
   useImperativeHandle(
     ref,
@@ -127,17 +180,35 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
         }
 
         // ----- Numeric dB readout -----
+        const db = rmsToDbSpl(level);
+        const audibleEnough = db >= DB_SPL_DISPLAY_FLOOR;
         const dbReadout = dbReadoutRef.current;
         if (dbReadout) {
-          const db = rmsToDbSpl(level);
-          const display =
-            db < DB_SPL_DISPLAY_FLOOR ? null : Math.round(db);
+          const display = audibleEnough ? Math.round(db) : null;
           if (display !== lastDbDisplayRef.current) {
             lastDbDisplayRef.current = display;
             dbReadout.textContent =
               display === null ? "—" : `${display} dB`;
           }
         }
+
+        // ----- State label under the dB number -----
+        // After onset: stay "Recording" no matter what the level does.
+        // Before onset: "Listening…" while inaudible, then "+N dB to start"
+        // showing the live gap to the chart-onset threshold.
+        if (onsetDetectedRef.current) {
+          applyLabelState({ kind: "recording" });
+        } else if (!audibleEnough) {
+          applyLabelState({ kind: "listening" });
+        } else {
+          const gap = Math.max(1, Math.round(ONSET_DB_SPL - db));
+          applyLabelState({ kind: "to_start", gap });
+        }
+      },
+      setOnsetDetected(detected: boolean) {
+        onsetDetectedRef.current = detected;
+        if (detected) applyLabelState({ kind: "recording" });
+        else applyLabelState({ kind: "listening" });
       },
       reset() {
         smoothedRef.current = 0;
@@ -146,11 +217,15 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
         peakHoldUntilRef.current = 0;
         lastFrameTimeRef.current = 0;
         lastDbDisplayRef.current = null;
+        onsetDetectedRef.current = false;
+        // Force the next applyLabelState call to write the DOM.
+        lastLabelStateRef.current = { kind: "recording" };
+        applyLabelState({ kind: "listening" });
 
         const fill = fillRef.current;
         if (fill) {
           fill.style.height = "0%";
-          fill.style.backgroundColor = ZONE_COLORS.target;
+          fill.style.backgroundColor = ZONE_COLORS.soft;
           fill.classList.add("pulsing");
         }
         const peak = peakRef.current;
@@ -177,7 +252,13 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
       </div>
       <div className="db-readout-badge">
         <div ref={dbReadoutRef} className="db-readout">—</div>
-        <div className="db-readout-label">SPL (est.)</div>
+        <div
+          ref={dbLabelRef}
+          className="db-readout-label is-listening"
+          aria-live="polite"
+        >
+          Listening…
+        </div>
       </div>
     </div>
   );

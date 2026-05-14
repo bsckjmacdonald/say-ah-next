@@ -462,9 +462,25 @@ svg {
 }
 .db-readout-label {
   font-size: 11px;
-  color: var(--color-fg-soft);
   margin-top: 3px;
   letter-spacing: 0.3px;
+  font-weight: 600;
+  transition: color 0.18s ease;
+}
+/* Pre-onset, signal under the dB display floor — nothing to gap-quote yet. */
+.db-readout-label.is-listening {
+  color: var(--color-fg-soft);
+  font-weight: 500;
+}
+/* Pre-onset, audible: shows "+N dB to start" — same accent blue as the
+   start-line and overlay on the strip chart so the patient ties the two
+   cues together as one message. */
+.db-readout-label.is-to-start {
+  color: rgb(0, 90, 180);
+}
+/* Post-onset latch: rep is in progress. */
+.db-readout-label.is-recording {
+  color: #157031;
 }
 
 /* Peak-hold marker — thin horizontal line that lingers at the recent
