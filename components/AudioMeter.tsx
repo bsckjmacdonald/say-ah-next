@@ -134,8 +134,6 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
           smoothedRef.current * (1 - alpha) + rawLevel * alpha;
         const level = Math.min(smoothedRef.current, 1);
 
-        if (level > 0.05) fill.classList.remove("pulsing");
-
         // ----- Bar height + zone colour -----
         const scaled = Math.min(level, CHART_MAX_LEVEL) / CHART_MAX_LEVEL;
         fill.style.height = scaled * 100 + "%";
@@ -226,7 +224,6 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
         if (fill) {
           fill.style.height = "0%";
           fill.style.backgroundColor = ZONE_COLORS.soft;
-          fill.classList.add("pulsing");
         }
         const peak = peakRef.current;
         if (peak) {
@@ -244,7 +241,7 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
     <div className="audio-meter-wrapper">
       <div className="meter-track-wrapper">
         <div className="audio-meter-track">
-          <div ref={fillRef} className="audio-meter-fill pulsing" />
+          <div ref={fillRef} className="audio-meter-fill" />
         </div>
         <div ref={peakRef} className="meter-peak-marker" />
         <div className="meter-tick meter-tick-high" />
