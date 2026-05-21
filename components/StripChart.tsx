@@ -15,6 +15,7 @@ import {
   CHART_MAX_LEVEL,
   METER_LOUD_THRESHOLD,
   METER_SOFT_THRESHOLD,
+  ONSET_THRESHOLD,
   STRIP_INTERVAL_MS,
   STRIP_MAX_POINTS,
 } from "@/lib/constants";
@@ -28,6 +29,11 @@ function computeVisiblePoints(n: number): number {
 interface RenderOpts {
   visiblePoints: number;
   timeLabels: boolean;
+  /**
+   * When true (live chart, pre-onset), draw a coaching overlay telling the
+   * patient to get louder. The final/result chart leaves this off.
+   */
+  showStartCue?: boolean;
 }
 
 function renderLoudnessChart(
@@ -37,7 +43,7 @@ function renderLoudnessChart(
   buffer: number[],
   opts: RenderOpts,
 ) {
-  const { visiblePoints, timeLabels } = opts;
+  const { visiblePoints, timeLabels, showStartCue } = opts;
   // cH = full canvas height — time labels are drawn inset (no reserved strip).
   const cH = H;
 
@@ -114,6 +120,50 @@ function renderLoudnessChart(
     ctx.restore();
   }
 
+  // Chart-onset cue — dashed "start" line at ONSET_THRESHOLD plus a
+  // coaching overlay shown until the rep begins. The line tells the patient
+  // where the chart starts recording; the overlay nudges them to push
+  // their voice up to it. Both disappear once setOnsetDetected(true) flips
+  // showStartCue off, so the rep itself stays visually uncluttered.
+  if (showStartCue) {
+    const onsetY = cH * (1 - scl(ONSET_THRESHOLD));
+
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = "rgba(0, 90, 180, 0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, onsetY);
+    ctx.lineTo(W, onsetY);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = 'bold 11px -apple-system,"SF Pro Text",Arial,sans-serif';
+    ctx.fillStyle = "rgba(0, 90, 180, 0.95)";
+    ctx.textAlign = "left";
+    ctx.fillText("start", 6, onsetY - 4);
+    ctx.restore();
+
+    if (!buffer || buffer.length === 0) {
+      const textX = W / 2;
+      const arrowY = onsetY + 26;
+      const lineY = arrowY + 20;
+
+      ctx.save();
+      ctx.textAlign = "center";
+
+      ctx.font = 'bold 22px -apple-system,"SF Pro Text",Arial,sans-serif';
+      ctx.fillStyle = "rgba(0, 90, 180, 0.85)";
+      ctx.fillText("↑", textX, arrowY);
+
+      ctx.font = 'bold 14px -apple-system,"SF Pro Text",Arial,sans-serif';
+      ctx.fillStyle = "rgba(0, 60, 130, 0.95)";
+      ctx.fillText("A little louder to begin", textX, lineY);
+      ctx.restore();
+    }
+  }
+
   if (!buffer || buffer.length === 0) return;
 
   const xStep = W / visiblePoints;
@@ -182,6 +232,8 @@ function renderLoudnessChart(
 // ----------------------------------------------------------------------------
 export interface LiveStripChartHandle {
   draw: (buffer: number[]) => void;
+  /** Flip to true once the analyser fires onset; clears the start overlay. */
+  setOnsetDetected: (detected: boolean) => void;
   reset: () => void;
 }
 
@@ -189,6 +241,7 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
   function LiveStripChart(_props, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const bufferRef = useRef<number[]>([]);
+    const onsetDetectedRef = useRef(false);
 
     const sizeAndDraw = (buffer: number[]) => {
       const canvas = canvasRef.current;
@@ -202,6 +255,7 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
       renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
         visiblePoints: computeVisiblePoints(buffer.length),
         timeLabels: true,
+        showStartCue: !onsetDetectedRef.current,
       });
     };
 
@@ -212,8 +266,13 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
           bufferRef.current = buffer;
           sizeAndDraw(buffer);
         },
+        setOnsetDetected(detected: boolean) {
+          onsetDetectedRef.current = detected;
+          sizeAndDraw(bufferRef.current);
+        },
         reset() {
           bufferRef.current = [];
+          onsetDetectedRef.current = false;
           sizeAndDraw([]);
         },
       }),
