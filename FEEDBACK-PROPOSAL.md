@@ -129,24 +129,33 @@ on iOS Chrome).
 
 ---
 
-## WS3 — Windows desktop reliability  *(needs repro, likely quick)*
+## WS3 — Windows desktop reliability  ✅ DONE (PR #6)
 
 **Addresses:** #4 (no data on Windows 11, Chrome + Edge), #9 (Done/Stop button
 dead), part of #3.
+**Branch:** `fix/windows-audio-capture` — must be carried into the combined
+batch branch (see "Branching" below) so this fix ships with the batch.
 
-- **Lead hypothesis:** `getUserMedia` requests `sampleRate: 48000` and
-  `channelCount: 1` as hard constraints (`hooks/useAudioAnalyser.ts:189-197`). On
-  Windows devices defaulting to 44.1 kHz this throws `OverconstrainedError`;
-  `openStream` catches it and returns `false` with only a `console.error`
-  (line 236) — a **silent failure**. With no analyser: meter dead, onset never
-  fires, Done/Stop does nothing, duration stays empty. Matches every Windows
-  symptom reported.
-- **Fix:** make `sampleRate` / `channelCount` advisory (`{ ideal: … }`) or drop
-  them; **surface a visible error** when `openStream` fails instead of failing
-  silently.
-- **Verify** on a Windows profile (the `verify` skill) before/after.
+- **Confirmed root cause (NOT the original constraint hypothesis):** `openStream`
+  only resumed the AudioContext on the *reuse* branch, so a freshly-created
+  context (the first session) was never resumed. Chrome's autoplay policy on
+  Windows routinely leaves a new `AudioContext` in the `suspended` state, which
+  outputs **only silence** — the analyser reads zeros, onset never fires, the
+  meter/timer never move ("no data captured"), and `stop()` silently re-arms
+  because no onset was detected (Done/Stop looks broken). This explains every
+  Windows symptom and why phones were unaffected. A-weighting was ruled out (the
+  reports predate it; coefficients derive from the live sample rate).
+- **Fix shipped:**
+  1. Resume the AudioContext unconditionally once the mic stream is open
+     (covers both first-create and reuse).
+  2. Added an `OverconstrainedError` fallback as belt-and-suspenders — retry
+     `getUserMedia` without the explicit `sampleRate`/`channelCount` so a device
+     that rejects them still captures. A genuine `NotAllowedError` is re-thrown
+     and still surfaces as "blocked".
+- **Status:** compiles + `next build` clean; no regression on Mac/iOS. **Still
+  needs runtime confirmation on a real Windows 11 machine** (Chrome + Edge).
 
-**Risk:** low — high-confidence diagnosis, small change.
+**Risk:** low — small, isolated change.
 
 ---
 
@@ -184,13 +193,25 @@ targets).
 
 ## Suggested sequencing
 
-1. **WS3 (Windows)** — low-risk, unblocks desktop testers entirely.
+1. **WS3 (Windows)** — ✅ done (PR #6, branch `fix/windows-audio-capture`).
 2. **WS1 (calibration + dB zones)** — core clinical fix; start once the target
    band is agreed.
 3. **WS2 (Kokoro)** — in parallel with WS1; independent code.
 4. **WS4 / WS5** — polish + clinical logic; fold in once specs land.
 
 Pre-merge: run the `session-check` QA checklist.
+
+## Branching (so WS3 ships with the batch)
+
+The WS3 fix is committed on `fix/windows-audio-capture` (off `main`), not on
+`main`. **The combined batch branch for the remaining workstreams must include
+that commit** — otherwise the batch PR won't contain the Windows fix. Either:
+- merge PR #6 to `main` first, then branch the batch off `main`; **or**
+- base the batch branch directly on `fix/windows-audio-capture` (cherry-pick /
+  merge the WS3 commit in if it lands separately).
+
+Verify the WS3 commit (`8e05b76`, "Fix silent no-audio capture on Windows") is
+present in the batch branch before opening the batch PR.
 
 ---
 
