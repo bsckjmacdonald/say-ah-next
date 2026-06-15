@@ -100,6 +100,12 @@ export const SPEAK_COACH_CUES_KEY = "sayah_speak_coach_cues";
 export const COACH_STORAGE_KEY = "sayah_coach_enabled";
 export const DEVICE_OFFSET_KEY_PREFIX = "sayah_offset_";
 
+// Clinician-setup settings (configured at /setup, stored per device)
+export const COACH_VOICE_KEY = "sayah_coach_voice"; // Kokoro voice id
+export const COACHING_LEVEL_KEY = "sayah_coaching_level"; // minimal|standard|encouraging
+export const SETUP_COMPLETE_KEY = "sayah_setup_complete";
+export const DEVICE_BASELINE_KEY_PREFIX = "sayah_baseline_"; // green-floor dB SPL, per device
+
 // Zone colours — used by both the meter and the strip chart
 export const ZONE_COLORS = {
   soft: "#f4c430", // yellow

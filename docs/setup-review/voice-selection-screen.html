@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Say Ah — Clinician Setup Review · Voice Selection Screen</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fafafa;
+      color: #111;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #2a7c7c;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.01em; }
+    header span { font-size: 0.85rem; opacity: 0.75; }
+
+    main {
+      flex: 1;
+      padding: 32px 20px 48px;
+    }
+
+    .page-intro {
+      max-width: 800px;
+      margin: 0 auto 36px;
+    }
+    .page-intro h2 {
+      font-size: 1.15rem;
+      color: #2a7c7c;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .page-intro p {
+      font-size: 0.88rem;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    /* State layout */
+    .states-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 48px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .state-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .state-label {
+      background: #374151;
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 4px 4px 0 0;
+      align-self: flex-start;
+      margin-left: 12px;
+    }
+
+    /* Phone frame */
+    .phone {
+      width: 380px;
+      background: white;
+      border: 2px solid #374151;
+      border-radius: 28px;
+      padding: 24px 20px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    /* Progress pip row */
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .progress-label {
+      font-size: 0.75rem;
+      color: #2a7c7c;
+      font-weight: 600;
+      flex: 1;
+    }
+    .progress-pips {
+      display: flex;
+      gap: 5px;
+    }
+    .pip {
+      width: 28px;
+      height: 5px;
+      border-radius: 3px;
+      background: #e5e7eb;
+    }
+    .pip.done { background: #a3d9d9; }
+    .pip.active { background: #2a7c7c; }
+
+    /* Screen heading */
+    .screen-heading {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+
+    /* Instruction */
+    .instruction {
+      font-size: 0.92rem;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Voice card */
+    .voice-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 10px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      margin-bottom: 12px;
+      transition: border-color 0.15s;
+      position: relative;
+    }
+
+    .voice-card.playing {
+      border-color: #2a7c7c;
+      background: #f0fafa;
+    }
+
+    .voice-card.selected {
+      border-color: #2a7c7c;
+      background: #f0fafa;
+      box-shadow: 0 0 0 3px rgba(42, 124, 124, 0.18);
+    }
+
+    .voice-card.dimmed {
+      opacity: 0.45;
+    }
+
+    .voice-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #111;
+      min-width: 60px;
+    }
+
+    .voice-meta {
+      flex: 1;
+    }
+    .voice-meta-name {
+      font-size: 0.82rem;
+      color: #555;
+    }
+
+    /* Play button (outlined) */
+    .play-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 7px;
+      border: 2px solid #2a7c7c;
+      background: white;
+      color: #2a7c7c;
+      font-size: 0.85rem;
+      font-weight: 600;
+      min-width: 96px;
+      cursor: default;
+      white-space: nowrap;
+    }
+
+    /* Play button — active/playing state */
+    .play-btn.playing {
+      background: #2a7c7c;
+      color: white;
+      border-color: #2a7c7c;
+    }
+
+    /* Selected checkmark badge */
+    .selected-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #2a7c7c;
+      color: white;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    /* Bottom hint text */
+    .hint-text {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      text-align: center;
+      margin-top: 6px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    /* Primary button */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      background: #2a7c7c;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 16px 20px;
+      border-radius: 8px;
+      text-align: center;
+      border: none;
+      cursor: default;
+      margin-top: auto;
+    }
+
+    /* Callout boxes */
+    .callout-right {
+      position: absolute;
+      right: 0;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-style: italic;
+      line-height: 1.5;
+      max-width: 160px;
+      background: #fafafa;
+      padding: 6px 8px;
+      border: 1px dotted #9ca3af;
+      border-radius: 4px;
+    }
+    .callout-left {
+      position: absolute;
+      left: 0;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-style: italic;
+      line-height: 1.5;
+      max-width: 160px;
+      background: #fafafa;
+      padding: 6px 8px;
+      border: 1px dotted #9ca3af;
+      border-radius: 4px;
+    }
+
+    /* Design rationale section */
+    .rationale {
+      max-width: 860px;
+      margin: 52px auto 0;
+      background: white;
+      border: 2px solid #2a7c7c;
+      border-radius: 10px;
+      padding: 28px 32px;
+    }
+    .rationale h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #2a7c7c;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 16px;
+    }
+    .rationale-body {
+      font-size: 0.88rem;
+      color: #374151;
+      line-height: 1.8;
+    }
+    .rationale-body p + p {
+      margin-top: 12px;
+    }
+    .rationale-body strong {
+      color: #111;
+    }
+
+    .design-notes {
+      max-width: 720px;
+      margin: 28px auto 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .design-notes h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #2a7c7c;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+    .design-notes ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .design-notes li {
+      font-size: 0.84rem;
+      color: #555;
+      line-height: 1.6;
+      padding-left: 18px;
+      position: relative;
+    }
+    .design-notes li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: #9ca3af;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 48px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Say Ah — Clinician Setup Review</h1>
+  <span>· Voice Selection Screen (Step 2 of 3)</span>
+</header>
+
+<main>
+  <div class="page-intro">
+    <h2>Coach Voice Selection — Screen Wireframe</h2>
+    <p>Two states shown: Auditioning (patient plays samples) and Selection confirmed (clinician's pick is highlighted). The patient operates the device; the clinician makes the choice.</p>
+  </div>
+
+  <div class="states-grid">
+
+    <!-- ============================================================ -->
+    <!-- STATE 1 — Auditioning -->
+    <!-- ============================================================ -->
+    <div class="state-section">
+      <div class="state-label">State 1 — Auditioning Voices</div>
+
+      <div style="position:relative; width:580px; display:flex; justify-content:center;">
+
+        <!-- Left callout: play button rationale -->
+        <div class="callout-left" style="top: 220px; left: 0;">
+          Outlined (not filled) play button signals "audition only" — patient is just listening, not choosing yet.
+        </div>
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+          <line x1="160" y1="262" x2="192" y2="262" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="160" cy="262" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <!-- Right callout: active playing state -->
+        <div class="callout-right" style="top: 280px; right: 0; max-width:148px;">
+          Filled teal button + "Playing…" text shows which sample is currently audible — useful when clinician and patient are on a call together.
+        </div>
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+          <line x1="390" y1="316" x2="420" y2="316" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="420" cy="316" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <!-- Left callout: hint text -->
+        <div class="callout-left" style="top: 490px; left: 0; max-width:152px;">
+          Clinician direction text is below the cards — sets expectation that the patient is not making the call.
+        </div>
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+          <line x1="152" y1="512" x2="192" y2="512" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="152" cy="512" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <div class="phone">
+          <div class="progress-bar">
+            <div class="progress-label">Step 2 of 3 — Coach Voice</div>
+            <div class="progress-pips">
+              <div class="pip done"></div>
+              <div class="pip active"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="screen-heading">Coach Voice</div>
+
+          <p class="instruction">Your clinician will ask you to play each voice. Press the play button to hear it.</p>
+
+          <!-- Voice A — idle -->
+          <div class="voice-card">
+            <div class="voice-label">Voice A</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Warm, calm tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <!-- Voice B — currently playing -->
+          <div class="voice-card playing">
+            <div class="voice-label">Voice B</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Clear, upbeat tone</div>
+            </div>
+            <div class="play-btn playing">&#9646;&#9646; Playing…</div>
+          </div>
+
+          <!-- Voice C — idle -->
+          <div class="voice-card">
+            <div class="voice-label">Voice C</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Gentle, measured tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <p class="hint-text">Listen together with your clinician,<br>then they'll tell you which to choose.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STATE 2 — Selection confirmed -->
+    <!-- ============================================================ -->
+    <div class="state-section">
+      <div class="state-label">State 2 — Selection Confirmed</div>
+
+      <div style="position:relative; width:580px; display:flex; justify-content:center;">
+
+        <!-- Left callout: selected highlight -->
+        <div class="callout-left" style="top: 230px; left: 0; max-width:150px;">
+          Teal border + light fill clearly identifies the chosen card. Patient doesn't decide — they tap to confirm clinician's verbal instruction.
+        </div>
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+          <line x1="150" y1="282" x2="192" y2="282" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="150" cy="282" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <!-- Right callout: dimmed cards -->
+        <div class="callout-right" style="top: 340px; right: 0; max-width:148px;">
+          Dimmed (opacity 0.45) unselected cards reinforce that the choice is settled — no further auditioning needed.
+        </div>
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+          <line x1="390" y1="376" x2="420" y2="376" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="420" cy="376" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <!-- Right callout: CTA wording -->
+        <div class="callout-right" style="top: 520px; right: 0; max-width:148px;">
+          Button copy names the voice ("Voice B") so patient can confirm it matches what clinician said — reduces confusion.
+        </div>
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+          <line x1="390" y1="553" x2="420" y2="553" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="420" cy="553" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <div class="phone">
+          <div class="progress-bar">
+            <div class="progress-label">Step 2 of 3 — Coach Voice</div>
+            <div class="progress-pips">
+              <div class="pip done"></div>
+              <div class="pip active"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="screen-heading">Coach Voice</div>
+
+          <p class="instruction">Your clinician has chosen a voice for you.</p>
+
+          <!-- Voice A — dimmed -->
+          <div class="voice-card dimmed">
+            <div class="voice-label">Voice A</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Warm, calm tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <!-- Voice B — SELECTED -->
+          <div class="voice-card selected">
+            <div class="selected-badge">&#10003;</div>
+            <div class="voice-label">Voice B</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Clear, upbeat tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <!-- Voice C — dimmed -->
+          <div class="voice-card dimmed">
+            <div class="voice-label">Voice C</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Gentle, measured tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <p class="hint-text" style="color:#2a7c7c; font-weight:600;">Your clinician selected Voice B for you.</p>
+
+          <div class="btn-primary">Use Voice B — Next &#8594;</div>
+        </div>
+      </div>
+
+      <!-- Annotation below State 2 phone -->
+      <div style="max-width:380px; margin-top:14px; background:#fafafa; border:1px dotted #9ca3af; border-radius:6px; padding:10px 14px;">
+        <p style="font-size:0.72rem; color:#6b7280; font-style:italic; line-height:1.6;">
+          <strong style="font-style:normal; color:#555;">Note:</strong> The state transition from auditioning to confirmed is triggered when the patient taps a card after the clinician names their choice verbally — not by a "confirm" button. The card tap is the confirmation action.
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /states-grid -->
+
+  <!-- Design rationale block -->
+  <div class="rationale">
+    <h3>Design Rationale — Split Control in Remote Setup</h3>
+    <div class="rationale-body">
+      <p>
+        This screen embodies a deliberate split of control: the <strong>patient physically operates the device</strong>, but the <strong>clinician makes the clinical decision</strong>. This split exists because (a) the clinician has professional knowledge of which voice characteristics aid LSVT compliance for a given patient, and (b) the patient may not have preferences or may be easily influenced by framing — putting the choice in the clinician's hands removes that cognitive burden.
+      </p>
+      <p>
+        In practice, the interaction is verbal: the clinician says "please play Voice A… now play Voice B… okay, let's use Voice B." The patient taps cards to audition, then taps Voice B's card to select it. The UI never asks the patient to <em>choose</em> — it only asks them to <em>play</em> and then <em>confirm</em>.
+      </p>
+      <p>
+        The auditioning state uses <strong>outlined play buttons</strong> (not filled) to signal that pressing play is a low-stakes action. The selection state uses a <strong>filled teal confirmation button</strong> at the bottom to signal the commitment step. The two visual registers (outlined vs filled) map directly to audition vs commit.
+      </p>
+      <p>
+        Voice labels are abstract (A, B, C) rather than descriptive names like "Emma" or "Standard Female" — this prevents patients from picking based on label preference rather than auditory experience, and keeps the clinician's verbal instruction unambiguous.
+      </p>
+    </div>
+  </div>
+
+  <div class="design-notes">
+    <h3>Additional Annotations</h3>
+    <ul>
+      <li><strong>Voice card tap area:</strong> The full card is tappable (not just the play button) in the auditioning state, to maximise touch target size for elderly users.</li>
+      <li><strong>No "Back" button shown:</strong> Back navigation will exist in the final design; omitted here to focus review on the core interaction pattern.</li>
+      <li><strong>Three voices:</strong> Three options were chosen as the maximum — more options add cognitive load with diminishing clinical benefit. The number may be reduced to two in the final build.</li>
+      <li><strong>Voice metadata ("Warm, calm tone"):</strong> Short descriptor aids the clinician in directing the patient verbally ("the calm sounding one") if a number alone isn't sufficient. Copy is placeholder — final wording TBD.</li>
+    </ul>
+  </div>
+
+</main>
+
+<footer>Draft for team review — May 2026 — not final design</footer>
+
+</body>
+</html>

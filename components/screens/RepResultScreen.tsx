@@ -5,7 +5,7 @@ import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
 import { FinalStripChart } from "@/components/StripChart";
 import { formatSeconds, formatMinutesSeconds } from "@/lib/format";
-import { cancelSpeech } from "@/lib/tts";
+import { coachVoice } from "@/lib/coachVoice";
 import { RepRating } from "@/components/RepRating";
 import type { RepResult } from "@/hooks/useSession";
 import { CoachToggle } from "@/components/CoachToggle";
@@ -60,7 +60,7 @@ export function RepResultScreen({
 
   const handlePlayback = () => {
     if (!audioRef.current) return;
-    cancelSpeech();
+    coachVoice.cancel();
     audioRef.current.currentTime = 0;
     audioRef.current.play().then(
       () => setIsPlaying(true),

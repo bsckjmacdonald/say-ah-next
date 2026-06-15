@@ -46,6 +46,10 @@ const PHRASES: Record<string, string[]> = {
   near_end: ["Almost there!", "Just a bit more!", "Strong finish!"],
 };
 
+// Flat list of every cue phrase, for pre-synthesizing the coach voice during
+// the countdown so cues play with zero latency during a rep.
+export const ALL_RT_PHRASES: string[] = Object.values(PHRASES).flat();
+
 // "Below this dB is too soft" — derived once from the existing RMS threshold
 // so the realtime coach uses the same target zone the meter visualizes.
 const TARGET_LOW_DB = rmsToDbSpl(METER_SOFT_THRESHOLD);

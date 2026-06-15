@@ -24,10 +24,11 @@ import { ProgressBar } from "@/components/ProgressBar";
 import {
   evaluateRealtimeFeedback,
   freshRealtimeState,
-  type RealtimeFeedbackState,
+  ALL_RT_PHRASES,
 } from "@/lib/realtimeFeedback";
-import { loadCoachEnabled } from "@/lib/storage";
-import { speakMessage } from "@/lib/tts";
+import type { RealtimeFeedbackState } from "@/lib/realtimeFeedback";
+import { loadCoachEnabled, loadCoachVoice } from "@/lib/storage";
+import { coachVoice } from "@/lib/coachVoice";
 import type { UseAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import type { RepCompletion } from "@/lib/types";
 
@@ -71,6 +72,10 @@ export function ExerciseScreen({
   const speakCoachCuesRef = useRef(false);
   useEffect(() => {
     speakCoachCuesRef.current = loadCoachEnabled();
+    // Use the clinician-selected voice and warm the cue cache so the first cue
+    // plays instantly (and from Kokoro, not the Web Speech fallback).
+    coachVoice.setVoice(loadCoachVoice());
+    if (speakCoachCuesRef.current) void coachVoice.prewarm(ALL_RT_PHRASES);
   }, []);
 
   // Start the analyser loop on mount, restart whenever the rep number changes.
@@ -111,11 +116,12 @@ export function ExerciseScreen({
                 setCoachCue(null);
                 coachCueTimerRef.current = null;
               }, COACH_CUE_HOLD_MS);
-              // Opt-in TTS — energetic prosody (rate +20 %, pitch +30 %) so
-              // coach cues sound brighter than the conversational post-rep
-              // encouragement.
+              // Opt-in TTS via the Kokoro coach voice. Spoken at natural speed
+              // (1.0) — the old Web Speech path pushed rate/pitch up to sound
+              // energetic, which clinicians reported as rushed and jarring.
+              // Pre-warmed phrases play instantly from cache.
               if (speakCoachCuesRef.current) {
-                speakMessage(phrase, { rate: 1.2, pitch: 1.3 });
+                void coachVoice.speak(phrase);
               }
             }
           }

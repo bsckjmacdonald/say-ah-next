@@ -7,11 +7,13 @@
 
 import {
   COACH_STORAGE_KEY,
+  COACH_VOICE_KEY,
   DEVICE_OFFSET_KEY_PREFIX,
   PB_KEY,
   SPEAK_COACH_CUES_KEY,
   STORAGE_KEY,
 } from "./constants";
+import { DEFAULT_COACH_VOICE, type CoachVoiceId } from "./coachVoice";
 import type { SessionRecord } from "./types";
 
 const MAX_HISTORY = 30;
@@ -58,6 +60,20 @@ export function loadCoachEnabled(): boolean {
 export function saveCoachEnabled(value: boolean): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(COACH_STORAGE_KEY, String(value));
+}
+
+/** Clinician-selected Kokoro coach voice; default when /setup hasn't run. */
+export function loadCoachVoice(): CoachVoiceId {
+  if (typeof window === "undefined") return DEFAULT_COACH_VOICE;
+  return (
+    (window.localStorage.getItem(COACH_VOICE_KEY) as CoachVoiceId | null) ??
+    DEFAULT_COACH_VOICE
+  );
+}
+
+export function saveCoachVoice(voice: CoachVoiceId): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(COACH_VOICE_KEY, voice);
 }
 
 /** Returns the calibrated offset for this deviceId, or `fallback` if uncalibrated. */

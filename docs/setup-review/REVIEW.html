@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Say Ah — Clinician Setup Session · Design Review</title>
+  <style>
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    /* ============================================================
+       HEADER BAR
+    ============================================================ */
+    .doc-header {
+      background: #2a7c7c;
+      color: white;
+      padding: 28px 40px 22px;
+    }
+    .doc-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      margin-bottom: 4px;
+    }
+    .doc-header .sub {
+      font-size: 0.92rem;
+      opacity: 0.82;
+      margin-bottom: 10px;
+    }
+    .doc-header .draft-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+    }
+
+    /* ============================================================
+       PAGE WRAPPER
+    ============================================================ */
+    .page-wrapper {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ============================================================
+       STICKY TOC
+    ============================================================ */
+    .toc {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    .toc-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+    .toc ol {
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .toc li { font-size: 0.88rem; }
+    .toc a {
+      color: #2a7c7c;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ============================================================
+       SECTION CARDS
+    ============================================================ */
+    .section-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 32px 36px;
+      margin-bottom: 32px;
+    }
+
+    /* ============================================================
+       HEADINGS
+    ============================================================ */
+    h2 {
+      font-size: 1.2rem;
+      color: #2a7c7c;
+      font-weight: 700;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+      margin-top: 0;
+    }
+    h3 {
+      font-size: 1rem;
+      color: #1f2937;
+      font-weight: 700;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    h3:first-child { margin-top: 0; }
+    h4 {
+      font-size: 0.92rem;
+      color: #374151;
+      font-weight: 600;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    /* ============================================================
+       PROSE
+    ============================================================ */
+    p { margin-bottom: 14px; }
+    p:last-child { margin-bottom: 0; }
+
+    ul, ol {
+      padding-left: 22px;
+      margin-bottom: 14px;
+    }
+    li { margin-bottom: 5px; }
+    li:last-child { margin-bottom: 0; }
+
+    strong { color: #111; }
+
+    code {
+      font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
+      font-size: 0.85em;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 28px 0;
+    }
+
+    /* ============================================================
+       TABLES
+    ============================================================ */
+    .table-wrap { overflow-x: auto; margin-bottom: 20px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    thead tr {
+      background: #2a7c7c;
+      color: white;
+    }
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.82rem;
+      letter-spacing: 0.02em;
+    }
+    tbody tr:nth-child(odd)  { background: #fafafa; }
+    tbody tr:nth-child(even) { background: #ffffff; }
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: top;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* Open questions table — amber style */
+    .open-q-table thead tr { background: #b45309; }
+    .open-q-table tbody tr:hover { background: #fffbeb; }
+
+    /* ============================================================
+       CALLOUT / OPEN QUESTION BOX
+    ============================================================ */
+    .callout-amber {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      font-size: 0.9rem;
+    }
+    .callout-amber-title {
+      font-weight: 700;
+      color: #92400e;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .callout-amber p { color: #78350f; margin-bottom: 8px; }
+    .callout-amber p:last-child { margin-bottom: 0; }
+
+    .callout-info {
+      background: #f0fafa;
+      border-left: 4px solid #2a7c7c;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      font-size: 0.9rem;
+      color: #1a4f4f;
+    }
+
+    /* ============================================================
+       VISUAL SECTION HEADINGS
+    ============================================================ */
+    .visual-section-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .visual-section-head h2 {
+      border: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+    .visual-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: #2a7c7c;
+      color: white;
+      border-radius: 4px;
+      padding: 2px 8px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ============================================================
+       SVG & DIAGRAM EMBED
+    ============================================================ */
+    .diagram-embed {
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      padding: 16px;
+    }
+    .diagram-embed svg {
+      display: block;
+      max-width: 100%;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .diagram-legend {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #555;
+    }
+    .legend-box {
+      width: 30px;
+      height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       WIREFRAME EMBED — phone frames etc.
+    ============================================================ */
+    .wireframe-intro {
+      font-size: 0.88rem;
+      color: #555;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    /* Phone frame (from original wireframes) */
+    .phone {
+      width: 340px;
+      min-height: 540px;
+      background: white;
+      border: 2px solid #374151;
+      border-radius: 28px;
+      padding: 22px 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+
+    .phone-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .phone-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .phone-label {
+      background: #374151;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 4px 4px 0 0;
+      align-self: flex-start;
+      margin-left: 10px;
+    }
+
+    /* Progress bar (pip row) */
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .progress-label {
+      font-size: 0.7rem;
+      color: #2a7c7c;
+      font-weight: 600;
+      flex: 1;
+    }
+    .progress-pips { display: flex; gap: 5px; }
+    .pip {
+      width: 24px;
+      height: 5px;
+      border-radius: 3px;
+      background: #e5e7eb;
+    }
+    .pip.active { background: #2a7c7c; }
+    .pip.done   { background: #a3d9d9; }
+
+    /* Screen heading */
+    .screen-heading {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+
+    /* Instruction text */
+    .instruction {
+      font-size: 0.9rem;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      background: #2a7c7c;
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 14px 18px;
+      border-radius: 8px;
+      text-align: center;
+      border: none;
+      cursor: default;
+      margin-top: auto;
+    }
+    .btn-secondary {
+      display: block;
+      flex: 1;
+      background: white;
+      color: #2a7c7c;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 12px 10px;
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid #2a7c7c;
+      cursor: default;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    /* Countdown */
+    .countdown {
+      font-size: 4.5rem;
+      font-weight: 800;
+      color: #2a7c7c;
+      text-align: center;
+      line-height: 1;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    /* Level bar */
+    .level-bar-wrap { margin-bottom: 8px; }
+    .level-bar-bg {
+      width: 100%;
+      height: 32px;
+      background: #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .level-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #2a7c7c 0%, #3aadad 100%);
+    }
+    .level-ticks {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 1px;
+      margin-top: 3px;
+      margin-bottom: 12px;
+    }
+    .level-ticks span { font-size: 0.62rem; color: #9ca3af; }
+    .level-bar-label  { font-size: 0.8rem; color: #555; text-align: center; margin-top: 5px; }
+    .level-bar-sublabel { font-size: 0.72rem; color: #9ca3af; text-align: center; margin-top: 3px; margin-bottom: 16px; }
+
+    /* Result badges */
+    .result-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .result-badge.good     { background: #ecfdf5; border: 2px solid #059669; }
+    .result-badge.marginal { background: #fffbeb; border: 2px solid #f59e0b; }
+    .result-icon { font-size: 1.8rem; flex-shrink: 0; line-height: 1; }
+    .result-text { font-size: 0.95rem; font-weight: 700; line-height: 1.3; }
+    .result-badge.good .result-text     { color: #059669; }
+    .result-badge.marginal .result-text { color: #b45309; }
+    .result-sub { font-size: 0.72rem; color: #6b7280; margin-top: 3px; font-weight: 400; }
+
+    /* Mini level bar */
+    .mini-level-wrap { margin-bottom: 18px; }
+    .mini-level-label { font-size: 0.72rem; color: #555; margin-bottom: 4px; }
+    .mini-level-bg {
+      width: 100%;
+      height: 14px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .mini-level-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2a7c7c 0%, #3aadad 100%);
+      border-radius: 4px;
+    }
+
+    /* Voice card */
+    .voice-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 10px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .voice-card.playing  { border-color: #2a7c7c; background: #f0fafa; }
+    .voice-card.selected { border-color: #2a7c7c; background: #f0fafa; box-shadow: 0 0 0 3px rgba(42,124,124,0.18); }
+    .voice-card.dimmed   { opacity: 0.45; }
+    .voice-label    { font-size: 0.95rem; font-weight: 700; color: #111; min-width: 56px; }
+    .voice-meta     { flex: 1; }
+    .voice-meta-name { font-size: 0.78rem; color: #555; }
+    .play-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 14px;
+      border-radius: 7px;
+      border: 2px solid #2a7c7c;
+      background: white;
+      color: #2a7c7c;
+      font-size: 0.8rem;
+      font-weight: 600;
+      min-width: 88px;
+      cursor: default;
+      white-space: nowrap;
+    }
+    .play-btn.playing { background: #2a7c7c; color: white; }
+    .selected-badge {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #2a7c7c;
+      color: white;
+      font-size: 0.68rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .hint-text {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      text-align: center;
+      margin-top: 6px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    /* Annotation boxes (wireframe callouts) */
+    .annotation-box {
+      background: #fafafa;
+      border: 1px dotted #9ca3af;
+      border-radius: 5px;
+      padding: 10px 12px;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-style: italic;
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+    .annotation-box strong { font-style: normal; color: #555; }
+
+    /* Info card in phone */
+    .phone-info-card {
+      background: #f0fafa;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 22px;
+    }
+    .phone-info-card-title {
+      font-size: 0.78rem;
+      color: #2a7c7c;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .phone-info-card p {
+      font-size: 0.78rem;
+      color: #555;
+      line-height: 1.5;
+      margin-bottom: 0;
+    }
+
+    /* Design notes / rationale block */
+    .design-notes {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 24px;
+    }
+    .design-notes h4 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #2a7c7c;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    .design-notes ul {
+      list-style: none;
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .design-notes li {
+      font-size: 0.82rem;
+      color: #555;
+      line-height: 1.6;
+      padding-left: 16px;
+      position: relative;
+    }
+    .design-notes li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: #9ca3af;
+    }
+
+    /* Rationale block (teal border) */
+    .rationale-block {
+      background: white;
+      border: 2px solid #2a7c7c;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-top: 24px;
+    }
+    .rationale-block h4 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #2a7c7c;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-top: 0;
+      margin-bottom: 14px;
+    }
+    .rationale-block p {
+      font-size: 0.86rem;
+      color: #374151;
+      line-height: 1.8;
+    }
+
+    /* Variant labels */
+    .variant-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    .doc-footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+      background: white;
+    }
+
+    /* ============================================================
+       PRINT STYLES
+    ============================================================ */
+    @media print {
+      body { background: white; }
+      .doc-header { background: none !important; color: #000 !important; border-bottom: 2px solid #2a7c7c; }
+      .doc-header .draft-badge { background: #e5e7eb; color: #000; border: 1px solid #9ca3af; }
+      .section-card { border: 1px solid #ccc; break-inside: avoid; }
+      .diagram-embed { break-inside: avoid; }
+      table { break-inside: avoid; }
+      .phone-grid { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====================================================
+     HEADER
+==================================================== -->
+<div class="doc-header">
+  <h1>Say Ah — Clinician Setup Session</h1>
+  <div class="sub">Design Review Document &middot; May 2026</div>
+  <div class="draft-badge">Draft &mdash; For team discussion only</div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- ====================================================
+       TABLE OF CONTENTS
+  ==================================================== -->
+  <nav class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#purpose">Purpose of this document</a></li>
+      <li><a href="#problem">The problem we are solving</a></li>
+      <li><a href="#constraints">Guiding constraints</a></li>
+      <li><a href="#what-setup-configures">What setup configures</a>
+        <ol style="margin-top:5px; gap:4px;">
+          <li><a href="#mic-calibration">Microphone calibration</a></li>
+          <li><a href="#coach-voice">Coach voice selection</a></li>
+          <li><a href="#verbosity">Coaching verbosity</a></li>
+        </ol>
+      </li>
+      <li><a href="#entry-point">Proposed entry point</a></li>
+      <li><a href="#screen-flow">Proposed screen flow</a></li>
+      <li><a href="#persistence">Settings persistence</a></li>
+      <li><a href="#recalibration">Re-calibration triggers</a></li>
+      <li><a href="#not-covered">What this does NOT cover</a></li>
+      <li><a href="#open-questions">Open questions summary</a></li>
+      <li><a href="#visual-flow">Visual — Setup Session Flow Diagram</a></li>
+      <li><a href="#visual-calibration">Visual — Calibration Screen Wireframe</a></li>
+      <li><a href="#visual-voice">Visual — Voice Selection Screen Wireframe</a></li>
+    </ol>
+  </nav>
+
+
+  <!-- ====================================================
+       SECTION: PURPOSE
+  ==================================================== -->
+  <div class="section-card" id="purpose">
+    <h2>Purpose of this document</h2>
+    <p>This document proposes a <strong>Clinician Setup Session</strong> — a one-time (or per-device) configuration step that a clinician runs with a patient during their first virtual session. It covers what the setup would configure, how it would flow, what would be stored, and what questions the team needs to answer before we build anything.</p>
+    <p>The goal is to collect clinical and UX input before committing to an implementation direction.</p>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: PROBLEM
+  ==================================================== -->
+  <div class="section-card" id="problem">
+    <h2>The problem we are solving</h2>
+    <p>The main Say Ah app is deliberately minimal — large text, one button, no settings. That's the right experience for elderly patients with Parkinson's disease, many of whom have some degree of cognitive decline. But three things currently need to be configured for the app to work well for a specific patient on a specific device:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>What</th>
+            <th>Why it matters</th>
+            <th>Current state</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Microphone calibration</strong></td>
+            <td>The raw mic signal needs a per-device offset to display accurate dB SPL values</td>
+            <td>No calibration UI exists; a fixed default offset is used</td>
+          </tr>
+          <tr>
+            <td><strong>Coach voice</strong></td>
+            <td>The voice that delivers in-rep encouragement needs to match what LSVT clinicians find effective and warm</td>
+            <td>Currently browser built-in TTS (robotic); Kokoro neural TTS evaluation is underway</td>
+          </tr>
+          <tr>
+            <td><strong>Coaching verbosity</strong></td>
+            <td>Some patients benefit from frequent cues; others find them distracting</td>
+            <td>Currently one fixed behaviour</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>All three of these are decisions a clinician should make, not the patient. The patient should never need to see a settings screen.</p>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: CONSTRAINTS
+  ==================================================== -->
+  <div class="section-card" id="constraints">
+    <h2>Guiding constraints</h2>
+    <p>These constrain every design decision below.</p>
+    <ol>
+      <li><strong>The patient-facing app stays exactly as it is.</strong> No settings, no menus, no setup prompts visible to the patient.</li>
+      <li><strong>Setup is a clinical act, not a user preference.</strong> The clinician directs it remotely; the patient cooperates (e.g., during calibration) and the clinician confirms the result via video.</li>
+      <li><strong>The primary deployment scenario is remote.</strong> The patient is at home on their own device. The clinician is on a video call. Setup must be completable by a patient/caregiver following verbal guidance, with the clinician watching via screen share or observing through the video feed.</li>
+      <li><strong>Setup should take under 3 minutes</strong>, including calibration. LSVT sessions are time-constrained.</li>
+      <li><strong>The app should work without setup</strong> (fallback defaults), so that a patient can do a session before their clinician has configured the device. It just won't be optimally calibrated.</li>
+      <li><strong>Setup must survive across sessions</strong> on the same device. The patient should not need to re-configure on every visit.</li>
+    </ol>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: WHAT SETUP CONFIGURES
+  ==================================================== -->
+  <div class="section-card" id="what-setup-configures">
+    <h2>What setup configures</h2>
+
+    <h3 id="mic-calibration">1. Microphone calibration</h3>
+    <p><strong>Goal:</strong> compute a per-device SPL offset so the app displays readings within &plusmn;5 dB of a calibrated reference.</p>
+
+    <h4>Proposed method &mdash; guided trial phonation</h4>
+    <p>The patient says "ahhh" at a comfortable, conversational volume for 5 seconds while the clinician watches a live quality indicator via screen share. The app measures the average level during that window. The clinician then selects the expected SPL from a preset menu &mdash; for example, "comfortable voice at arm's length" maps to approximately 60&ndash;65 dB SPL.</p>
+    <p>The offset is stored per device (keyed to the device's microphone ID) and applied silently on every subsequent session.</p>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Clinical team</div>
+      <p><strong>Does the app need absolute SPL accuracy or relative (trend) accuracy?</strong> The answer changes the calibration requirement significantly:</p>
+      <ul>
+        <li><strong>Relative accuracy only</strong> &rarr; trial phonation works well; we calibrate once and track change</li>
+        <li><strong>Absolute accuracy</strong> &rarr; trial phonation is unreliable because patients have different natural loudness; a known reference source would be needed</li>
+      </ul>
+    </div>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Clinical team</div>
+      <p>Is the "comfortable voice at arm's length &asymp; 60&ndash;65 dBSPL" assumption valid for LSVT patients specifically? Their baseline vocal loudness may be meaningfully lower than the general population.</p>
+    </div>
+
+    <hr>
+
+    <h3 id="coach-voice">2. Coach voice selection</h3>
+    <p><strong>Goal:</strong> choose the Kokoro neural TTS voice that sounds most natural and encouraging for LSVT coaching.</p>
+    <p><strong>Proposed method:</strong> The setup screen plays a short sample from each candidate voice saying a representative coaching phrase. The clinician listens through the video call and directs the patient/caregiver to select one. The chosen voice ID is stored and used for all subsequent coach cues.</p>
+    <p><strong>Dependency:</strong> This step requires the TTS model evaluation to have produced a shortlist of 2&ndash;4 voices worth presenting. The clinician is choosing from pre-vetted candidates, not from all 54 Kokoro voices.</p>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Remote listening environment</div>
+      <p>In a virtual session, the clinician hears the voice samples through the patient's device speaker via the video call audio feed. This is a degraded listening environment. Should voice selection be made by the clinician based on their own direct audition (outside the session) rather than real-time comparison through a video call?</p>
+    </div>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Clinical + UX</div>
+      <p>Should the clinician <strong>pre-select</strong> the voice before the session (based on their own evaluation of the TTS samples) and simply confirm it during setup? Or is real-time selection during the setup session the right model?</p>
+    </div>
+
+    <hr>
+
+    <h3 id="verbosity">3. Coaching verbosity</h3>
+    <p><strong>Goal:</strong> match the frequency and style of in-rep coaching cues to what works for this patient.</p>
+    <p><strong>Proposed presets (three options, clinician directs patient to select):</strong></p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Preset</th>
+            <th>In-rep behaviour</th>
+            <th>Best for</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Minimal</strong></td>
+            <td>Visual cue only; no voice during the rep</td>
+            <td>Patients who find voice cues distracting or anxiety-inducing</td>
+          </tr>
+          <tr>
+            <td><strong>Standard</strong> (default)</td>
+            <td>Voice cue at onset + one mid-rep prompt if volume drops</td>
+            <td>Most patients</td>
+          </tr>
+          <tr>
+            <td><strong>Encouraging</strong></td>
+            <td>Voice cue at onset + cues every 2 s + enthusiastic completion phrase</td>
+            <td>Patients who need strong positive reinforcement to sustain effort</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Clinical team</div>
+      <p>Are these the right three levels? Are there other dimensions that matter &mdash; for example, cue content (encouraging vs. technical: "Keep going!" vs. "Maintain your volume!")? The team should validate or revise these presets before we build them.</p>
+    </div>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: ENTRY POINT
+  ==================================================== -->
+  <div class="section-card" id="entry-point">
+    <h2>Proposed entry point</h2>
+    <p>A separate URL path: <code>/setup</code></p>
+    <p>No link to this path appears anywhere in the patient-facing app. In a remote session, the clinician shares the URL verbally or via video call chat. The patient or caregiver types it in &mdash; or the clinician can send it as a link ahead of the appointment (e.g., in a pre-session message: "Before we start, please open this link on your device").</p>
+    <p>A <strong>QR code</strong> displayed on the clinician's screen (pointed at the video camera) is also practical: the patient scans it with their device and lands directly on <code>/setup</code>.</p>
+
+    <h3>Access protection</h3>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Clinical + UX</div>
+      <p>The level of protection should match the risk: if a patient accidentally re-opens <code>/setup</code> and changes a setting, the worst outcome is an unexpected voice on the next session. Recoverable, not harmful.</p>
+    </div>
+
+    <p>Options in ascending order of friction:</p>
+    <ul>
+      <li><strong>No protection</strong> &mdash; <code>/setup</code> just works; simplest for the clinician to direct remotely</li>
+      <li><strong>4-digit PIN</strong> &mdash; clinician sets a PIN during first setup; reads it to the patient only when re-setup is needed</li>
+      <li><strong>Session link with token</strong> &mdash; clinician sends a one-time link that expires after setup completes; no PIN to remember</li>
+    </ul>
+    <p>Recommendation: start with no protection during the proof-of-concept phase.</p>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: SCREEN FLOW
+  ==================================================== -->
+  <div class="section-card" id="screen-flow">
+    <h2>Proposed screen flow</h2>
+    <pre>Clinician shares /setup URL or QR code during virtual session
+    │
+    ▼
+Welcome screen
+"Clinician Setup — takes about 2 minutes.
+ Your clinician will guide you through each step."
+[Begin Setup]
+    │
+    ▼
+Step 1 of 3: Microphone check
+"When your clinician says go, say 'ahhh' in your normal voice
+ and hold it for 5 seconds."
+[I'm ready — Start]
+    → 5-second countdown → live meter + quality indicator
+    → Result: Good / Marginal / Retry
+[Accept] [Try again]
+    │
+    ▼
+Step 2 of 3: Choose a voice
+"Your clinician will ask you to play each one."
+[Voice A ▶] [Voice B ▶] [Voice C ▶]
+"Which one did your clinician choose?"
+[Voice A] [Voice B] [Voice C]
+    │
+    ▼
+Step 3 of 3: Coaching level
+"Your clinician will tell you which to select."
+[Quiet] [Standard] [Encouraging]
+[short description of each]
+[Save and finish]
+    │
+    ▼
+Confirmation screen
+"All done! You can close this and open the main app."
+[Go to Say Ah]</pre>
+
+    <p style="margin-top:16px;">On <strong>returning visits</strong>, setup does not re-run automatically. The stored settings are applied silently. If the clinician needs to change a setting (e.g., a new microphone, or adjusting the verbosity level after observing a few sessions), they direct the patient to <code>/setup</code> again &mdash; each step can be re-run independently, and the current values are shown.</p>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: PERSISTENCE
+  ==================================================== -->
+  <div class="section-card" id="persistence">
+    <h2>Settings persistence</h2>
+    <p>All settings are stored in browser <code>localStorage</code> on the patient's device. This means:</p>
+    <ul>
+      <li><strong>Settings survive app updates</strong> &mdash; localStorage is not cleared by a Next.js/Vercel deployment</li>
+      <li><strong>Settings are device-specific</strong> &mdash; if the patient switches devices, setup runs again</li>
+      <li><strong>No account or login is required</strong> &mdash; consistent with the current privacy model (no patient data leaves the device)</li>
+    </ul>
+
+    <h3>localStorage keys that would be added</h3>
+    <ul>
+      <li><code>sayah_calibration_offset_{deviceId}</code> &mdash; already implemented (Phase 2)</li>
+      <li><code>sayah_coach_voice</code> &mdash; voice ID string (e.g., <code>"af_heart"</code>)</li>
+      <li><code>sayah_coaching_level</code> &mdash; <code>"minimal"</code> | <code>"standard"</code> | <code>"encouraging"</code></li>
+      <li><code>sayah_setup_complete</code> &mdash; boolean flag so the app knows setup has been done</li>
+    </ul>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: RECALIBRATION
+  ==================================================== -->
+  <div class="section-card" id="recalibration">
+    <h2>Re-calibration triggers</h2>
+    <p>The app will prompt the clinician (not the patient) to re-run calibration in two situations:</p>
+    <ol>
+      <li><strong>Microphone change</strong> &mdash; if the browser detects that the active microphone device has changed since last calibration (the patient plugged in a headset, or the device was reset). The app already has infrastructure for this (<code>needsRecalibration</code> flag from Phase 1). The prompt would appear somewhere visible on the clinician's video feed but not confusing to the patient &mdash; likely a small indicator on the pre-rep screen.</li>
+      <li><strong>Manual request</strong> &mdash; the clinician directs the patient to <code>/setup</code> to re-run any step.</li>
+    </ol>
+
+    <div class="callout-amber">
+      <div class="callout-amber-title">Open question &mdash; Clinical + UX</div>
+      <p>How should the recalibration prompt appear in a remote context? The patient sees it on their screen; the clinician sees it through the video call. Options:</p>
+      <ul>
+        <li>(a) Show nothing to the patient and rely on the clinician to notice during the session</li>
+        <li>(b) Show a brief message the patient can read aloud ("It says 'microphone changed'")</li>
+        <li>(c) Automatically notify the clinician through a separate channel (out of scope for PoC)</li>
+      </ul>
+    </div>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: NOT COVERED
+  ==================================================== -->
+  <div class="section-card" id="not-covered">
+    <h2>What this does NOT cover</h2>
+    <ul>
+      <li><strong>Export of calibration data</strong> &mdash; useful for research but not a clinical requirement today</li>
+      <li><strong>Over-the-air voice updates</strong> &mdash; if new Kokoro voices are added later, the clinician re-runs step 2; no special update mechanism needed</li>
+      <li><strong>Clinician-side dashboard</strong> &mdash; a view where the clinician can see the patient's calibration status and settings without the patient navigating to <code>/setup</code>; useful long-term, out of scope for PoC</li>
+    </ul>
+  </div>
+
+
+  <!-- ====================================================
+       SECTION: OPEN QUESTIONS
+  ==================================================== -->
+  <div class="section-card" id="open-questions">
+    <h2>Open questions summary</h2>
+    <p>The following questions require clinical and UX input before implementation begins.</p>
+
+    <div class="table-wrap">
+      <table class="open-q-table">
+        <thead>
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Question</th>
+            <th style="width:160px;">Who should answer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">1</td>
+            <td>Does the app need <strong>absolute</strong> SPL accuracy or <strong>relative</strong> (trend) accuracy?</td>
+            <td>Clinical team</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">2</td>
+            <td>Is "comfortable voice at arm's length &asymp; 60&ndash;65 dBSPL" a valid assumption for LSVT patients?</td>
+            <td>Clinical team</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">3</td>
+            <td>Should voice selection happen <strong>during</strong> the setup session or <strong>before</strong> it (clinician pre-selects)?</td>
+            <td>Clinical + UX</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">4</td>
+            <td>Should voice selection be <strong>per-patient</strong> or one voice per device/clinician?</td>
+            <td>Clinical team</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">5</td>
+            <td>Are the three <strong>verbosity presets</strong> (Quiet / Standard / Encouraging) the right levels and labels?</td>
+            <td>Clinical team</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">6</td>
+            <td>Should coaching vary by <strong>cue content</strong> as well as frequency (encouraging vs. instructional phrasing)?</td>
+            <td>Clinical team</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">7</td>
+            <td>What level of <strong>access protection</strong> for <code>/setup</code> is appropriate for the remote context?</td>
+            <td>Clinical + UX</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#b45309;">8</td>
+            <td>How should the <strong>recalibration prompt</strong> appear when the clinician is remote?</td>
+            <td>Clinical + UX</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- ====================================================
+       VISUAL 1: FLOW DIAGRAM
+  ==================================================== -->
+  <div class="section-card" id="visual-flow">
+    <div class="visual-section-head">
+      <h2 style="border:none; padding:0; margin:0;">Setup Session &mdash; Full Flow</h2>
+      <span class="visual-badge">Visual 1 of 3</span>
+    </div>
+    <p class="wireframe-intro">Two-column layout: Clinician column (left, light blue-gray) and Patient Device column (right). Each row shows a clinician action aligned with the corresponding patient screen, connected by a dashed teal arrow. Decision branches and the re-calibration path are shown separately.</p>
+
+    <div class="diagram-embed">
+      <!-- EMBEDDED SVG from fixed flow-diagram.html -->
+      <svg viewBox="0 0 900 1040" width="860" height="994" xmlns="http://www.w3.org/2000/svg" style="font-family: system-ui, -apple-system, sans-serif;">
+        <defs>
+          <marker id="rv-arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#374151"/>
+          </marker>
+          <marker id="rv-arr-teal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#2a7c7c"/>
+          </marker>
+          <marker id="rv-arr-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#059669"/>
+          </marker>
+          <marker id="rv-arr-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+          </marker>
+          <marker id="rv-arr-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"/>
+          </marker>
+        </defs>
+
+        <!-- Column backgrounds -->
+        <rect x="0" y="0" width="230" height="1040" fill="#f0fafa"/>
+        <rect x="230" y="0" width="670" height="1040" fill="#ffffff"/>
+        <line x1="230" y1="0" x2="230" y2="1040" stroke="#2a7c7c" stroke-width="1" stroke-dasharray="6,4"/>
+
+        <!-- Column headers -->
+        <rect x="0" y="0" width="230" height="48" fill="#1a5f5f"/>
+        <text x="115" y="20" font-size="11" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.08em">CLINICIAN</text>
+        <text x="115" y="36" font-size="10" fill="#a7f3d0" text-anchor="middle">(remote — video call)</text>
+        <rect x="230" y="0" width="670" height="48" fill="#374151"/>
+        <text x="565" y="28" font-size="11" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.08em">PATIENT'S DEVICE</text>
+
+        <!-- ROW 1 — Session start -->
+        <rect x="12" y="62" width="206" height="72" rx="8" fill="#2a7c7c"/>
+        <text x="115" y="88" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician shares /setup</text>
+        <text x="115" y="104" font-size="11" fill="white" text-anchor="middle">URL or QR code</text>
+        <text x="115" y="120" font-size="11" fill="white" text-anchor="middle">via video call</text>
+
+        <rect x="330" y="62" width="200" height="72" rx="8" fill="#2a7c7c"/>
+        <text x="430" y="92" font-size="11" font-weight="600" fill="white" text-anchor="middle">Patient opens /setup</text>
+        <text x="430" y="110" font-size="11" fill="white" text-anchor="middle">on device</text>
+
+        <line x1="230" y1="98" x2="328" y2="98" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rv-arr-teal)"/>
+
+        <!-- ROW 2 — Decision: setup done before? -->
+        <line x1="430" y1="134" x2="430" y2="167" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+        <polygon points="430,167 500,200 430,233 360,200" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+        <text x="430" y="196" font-size="11" font-weight="600" fill="#374151" text-anchor="middle">Setup already</text>
+        <text x="430" y="211" font-size="11" fill="#374151" text-anchor="middle">done?</text>
+
+        <!-- YES fast path -->
+        <line x1="500" y1="200" x2="560" y2="200" stroke="#059669" stroke-width="1.5" marker-end="url(#rv-arr-green)"/>
+        <text x="527" y="193" font-size="10" font-weight="700" fill="#059669">YES</text>
+        <rect x="560" y="168" width="180" height="40" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+        <text x="650" y="184" font-size="10" font-weight="600" fill="#059669" text-anchor="middle">Settings load silently</text>
+        <text x="650" y="199" font-size="10" fill="#059669" text-anchor="middle">(stored prefs applied)</text>
+        <line x1="650" y1="208" x2="650" y2="230" stroke="#059669" stroke-width="1.5" marker-end="url(#rv-arr-green)"/>
+        <rect x="560" y="230" width="180" height="36" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+        <text x="650" y="253" font-size="10" font-weight="600" fill="#059669" text-anchor="middle">Main app opens → END</text>
+        <line x1="650" y1="266" x2="650" y2="285" stroke="#059669" stroke-width="1.5" marker-end="url(#rv-arr-green)"/>
+        <rect x="617" y="285" width="66" height="24" rx="12" fill="#059669"/>
+        <text x="650" y="301" font-size="10" font-weight="700" fill="white" text-anchor="middle">END</text>
+
+        <!-- NO branch -->
+        <line x1="430" y1="233" x2="430" y2="268" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+        <text x="440" y="254" font-size="10" font-weight="700" fill="#374151">NO</text>
+
+        <!-- ROW 3 — Welcome -->
+        <rect x="12" y="272" width="206" height="72" rx="8" fill="#2a7c7c"/>
+        <text x="115" y="298" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician narrates</text>
+        <text x="115" y="314" font-size="11" fill="white" text-anchor="middle">welcome screen</text>
+
+        <rect x="330" y="272" width="200" height="72" rx="8" fill="#2a7c7c"/>
+        <text x="430" y="295" font-size="10" fill="#a7f3d0" text-anchor="middle">STEP 0</text>
+        <text x="430" y="312" font-size="11" font-weight="600" fill="white" text-anchor="middle">Setup Welcome</text>
+        <text x="430" y="328" font-size="11" fill="white" text-anchor="middle">Screen</text>
+
+        <line x1="230" y1="308" x2="328" y2="308" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rv-arr-teal)"/>
+        <line x1="430" y1="344" x2="430" y2="374" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+
+        <!-- ROW 4 — Calibration -->
+        <rect x="12" y="375" width="206" height="86" rx="8" fill="#2a7c7c"/>
+        <text x="115" y="400" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician watches</text>
+        <text x="115" y="416" font-size="11" fill="white" text-anchor="middle">live level meter</text>
+        <text x="115" y="432" font-size="11" fill="white" text-anchor="middle">via screen share</text>
+
+        <rect x="330" y="375" width="300" height="86" rx="8" fill="#2a7c7c"/>
+        <circle cx="348" cy="388" r="12" fill="#1a5f5f"/>
+        <text x="348" y="392" font-size="10" font-weight="700" fill="white" text-anchor="middle">1</text>
+        <text x="480" y="400" font-size="11" font-weight="700" fill="white" text-anchor="middle">STEP 1 — Microphone Check</text>
+        <text x="480" y="418" font-size="11" fill="white" text-anchor="middle">Patient says "ahhh" for 5 s</text>
+        <text x="480" y="435" font-size="11" fill="white" text-anchor="middle">Live level meter shown</text>
+        <text x="480" y="452" font-size="10" fill="#a7f3d0" text-anchor="middle">Clinician observes via screen share</text>
+
+        <line x1="230" y1="418" x2="328" y2="418" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rv-arr-teal)"/>
+        <line x1="480" y1="461" x2="480" y2="493" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+
+        <!-- ROW 5 — Quality diamond -->
+        <polygon points="480,493 548,527 480,561 412,527" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+        <text x="480" y="522" font-size="11" font-weight="600" fill="#374151" text-anchor="middle">Quality</text>
+        <text x="480" y="537" font-size="11" fill="#374151" text-anchor="middle">OK?</text>
+
+        <!-- NO → retry -->
+        <line x1="412" y1="527" x2="295" y2="527" stroke="#ef4444" stroke-width="1.5"/>
+        <line x1="295" y1="527" x2="295" y2="375" stroke="#ef4444" stroke-width="1.5"/>
+        <line x1="295" y1="375" x2="328" y2="375" stroke="#ef4444" stroke-width="1.5" marker-end="url(#rv-arr-red)"/>
+        <text x="355" y="520" font-size="10" font-weight="700" fill="#ef4444">NO</text>
+        <rect x="262" y="440" width="52" height="22" rx="4" fill="#fee2e2"/>
+        <text x="288" y="455" font-size="10" font-weight="600" fill="#ef4444" text-anchor="middle">Retry</text>
+
+        <!-- YES → accept -->
+        <line x1="480" y1="561" x2="480" y2="591" stroke="#059669" stroke-width="1.5" marker-end="url(#rv-arr-green)"/>
+        <text x="492" y="579" font-size="10" font-weight="700" fill="#059669">YES</text>
+        <rect x="506" y="555" width="52" height="22" rx="4" fill="#d1fae5"/>
+        <text x="532" y="570" font-size="10" font-weight="600" fill="#059669" text-anchor="middle">Accept</text>
+
+        <!-- ROW 6 — Coach Voice -->
+        <rect x="12" y="594" width="206" height="80" rx="8" fill="#2a7c7c"/>
+        <text x="115" y="620" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician listens to</text>
+        <text x="115" y="636" font-size="11" fill="white" text-anchor="middle">samples &amp; directs</text>
+        <text x="115" y="652" font-size="11" fill="white" text-anchor="middle">choice</text>
+
+        <rect x="330" y="594" width="300" height="80" rx="8" fill="#2a7c7c"/>
+        <circle cx="348" cy="607" r="12" fill="#1a5f5f"/>
+        <text x="348" y="611" font-size="10" font-weight="700" fill="white" text-anchor="middle">2</text>
+        <text x="480" y="620" font-size="11" font-weight="700" fill="white" text-anchor="middle">STEP 2 — Coach Voice</text>
+        <text x="480" y="638" font-size="11" fill="white" text-anchor="middle">Patient plays samples</text>
+        <text x="480" y="655" font-size="11" fill="white" text-anchor="middle">Clinician directs choice</text>
+
+        <line x1="230" y1="634" x2="328" y2="634" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rv-arr-teal)"/>
+        <line x1="480" y1="674" x2="480" y2="704" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+
+        <!-- ROW 7 — Coaching Level -->
+        <rect x="12" y="706" width="206" height="80" rx="8" fill="#2a7c7c"/>
+        <text x="115" y="731" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician directs</text>
+        <text x="115" y="747" font-size="11" fill="white" text-anchor="middle">coaching level</text>
+
+        <rect x="330" y="706" width="300" height="80" rx="8" fill="#2a7c7c"/>
+        <circle cx="348" cy="719" r="12" fill="#1a5f5f"/>
+        <text x="348" y="723" font-size="10" font-weight="700" fill="white" text-anchor="middle">3</text>
+        <text x="480" y="732" font-size="11" font-weight="700" fill="white" text-anchor="middle">STEP 3 — Coaching Level</text>
+        <text x="480" y="750" font-size="11" fill="white" text-anchor="middle">Quiet / Standard / Encouraging</text>
+        <text x="480" y="768" font-size="11" fill="white" text-anchor="middle">Clinician directs selection</text>
+
+        <line x1="230" y1="746" x2="328" y2="746" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rv-arr-teal)"/>
+        <line x1="480" y1="786" x2="480" y2="816" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+
+        <!-- ROW 8 — End sequence -->
+        <rect x="330" y="818" width="300" height="64" rx="8" fill="#1a5f5f"/>
+        <text x="480" y="845" font-size="12" font-weight="700" fill="white" text-anchor="middle">Confirmation Screen</text>
+        <text x="480" y="863" font-size="11" fill="#a7f3d0" text-anchor="middle">"All done! Setup complete."</text>
+
+        <line x1="480" y1="882" x2="480" y2="912" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+
+        <rect x="310" y="914" width="340" height="56" rx="8" fill="#1a5f5f"/>
+        <text x="480" y="938" font-size="12" font-weight="700" fill="white" text-anchor="middle">Patient opens Say Ah app</text>
+        <text x="480" y="955" font-size="11" fill="#a7f3d0" text-anchor="middle">Normal session begins</text>
+
+        <line x1="480" y1="970" x2="480" y2="998" stroke="#374151" stroke-width="1.5" marker-end="url(#rv-arr)"/>
+        <rect x="437" y="998" width="86" height="30" rx="15" fill="#374151"/>
+        <text x="480" y="1018" font-size="11" font-weight="700" fill="white" text-anchor="middle">END</text>
+
+        <!-- Re-calibration side box -->
+        <rect x="695" y="378" width="192" height="190" rx="9" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>
+        <text x="791" y="400" font-size="11" font-weight="700" fill="#b45309" text-anchor="middle">RE-CALIBRATION</text>
+        <text x="791" y="418" font-size="10" fill="#78350f" text-anchor="middle">If mic changes during a later</text>
+        <text x="791" y="432" font-size="10" fill="#78350f" text-anchor="middle">session:</text>
+        <text x="791" y="452" font-size="10" fill="#78350f" text-anchor="middle">&#x2460; Small indicator appears</text>
+        <text x="791" y="470" font-size="10" fill="#78350f" text-anchor="middle">in main app</text>
+        <text x="791" y="490" font-size="10" fill="#78350f" text-anchor="middle">&#x2461; Clinician directs patient</text>
+        <text x="791" y="506" font-size="10" fill="#78350f" text-anchor="middle">to /setup</text>
+        <text x="791" y="526" font-size="10" fill="#78350f" text-anchor="middle">&#x2462; Step 1 only — re-runs</text>
+        <text x="791" y="542" font-size="10" fill="#78350f" text-anchor="middle">calibration</text>
+
+        <path d="M 695,473 Q 660,473 660,418 L 632,418" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#rv-arr-amber)"/>
+        <text x="663" y="445" font-size="9" fill="#b45309" font-style="italic" text-anchor="middle">re-enter</text>
+        <text x="663" y="456" font-size="9" fill="#b45309" font-style="italic" text-anchor="middle">Step 1</text>
+      </svg>
+    </div>
+
+    <!-- Diagram legend -->
+    <div class="diagram-legend" style="margin-top:16px;">
+      <div class="legend-item">
+        <div class="legend-box" style="background:#2a7c7c;"></div>
+        Patient screen / state
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#1a5f5f;"></div>
+        Completion screens
+      </div>
+      <div class="legend-item">
+        <div style="width:28px; height:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <svg width="28" height="16"><polygon points="14,2 26,8 14,14 2,8" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/></svg>
+        </div>
+        Decision point
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#ecfdf5; border:1.5px solid #059669;"></div>
+        Returning-visitor fast path
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#fff7ed; border:1.5px solid #f59e0b;"></div>
+        Re-calibration branch
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ====================================================
+       VISUAL 2: CALIBRATION SCREEN
+  ==================================================== -->
+  <div class="section-card" id="visual-calibration">
+    <div class="visual-section-head">
+      <h2 style="border:none; padding:0; margin:0;">Calibration Screen Wireframe</h2>
+      <span class="visual-badge">Visual 2 of 3</span>
+    </div>
+    <p class="wireframe-intro">Step 1 of 3 — Microphone Check. Three states shown: Ready to begin / Recording in progress / Result (Good &amp; Marginal variants). Annotations in dotted boxes explain design rationale for the remote clinical setup context.</p>
+
+    <!-- STATE 1: Ready to begin -->
+    <h3>State 1 &mdash; Ready to Begin</h3>
+    <div class="phone-grid">
+      <div class="phone-section">
+        <div class="phone-label">State 1 — Ready to Begin</div>
+        <div class="phone">
+          <div class="progress-bar">
+            <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+            <div class="progress-pips">
+              <div class="pip active"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="screen-heading">Microphone<br>Check</div>
+          <p class="instruction">When your clinician says go, say <strong>"ahhh"</strong> in your normal speaking voice and hold it for 5 seconds.</p>
+
+          <div class="phone-info-card">
+            <div class="phone-info-card-title">What to expect</div>
+            <p>A meter will appear showing your voice level. Your clinician can see it too.</p>
+          </div>
+
+          <div style="margin-top: auto;">
+            <div class="btn-primary">I'm ready — Start</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1; min-width:200px; max-width:320px; align-self:center;">
+        <div class="annotation-box">
+          <strong>Design note:</strong> "Your clinician can see it too" sets expectation for screen share before recording begins. The patient understands this is collaborative.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>No countdown yet:</strong> The big numeric countdown only starts when patient taps "I'm ready — Start." This avoids cognitive overload before the patient is ready.
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- STATE 2: Recording -->
+    <h3>State 2 &mdash; Recording in Progress</h3>
+    <div class="phone-grid">
+      <div class="phone-section">
+        <div class="phone-label">State 2 — Recording in Progress</div>
+        <div class="phone">
+          <div class="progress-bar">
+            <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+            <div class="progress-pips">
+              <div class="pip active"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="countdown">3</div>
+
+          <div class="level-bar-wrap">
+            <div class="level-bar-bg">
+              <div class="level-bar-fill" style="width: 62%;"></div>
+            </div>
+            <div class="level-ticks">
+              <span>Too quiet</span>
+              <span>Good</span>
+              <span>Too loud</span>
+            </div>
+            <div class="level-bar-label">Keep going&hellip;</div>
+            <div class="level-bar-sublabel">Your clinician is watching the level</div>
+          </div>
+
+          <div style="display:flex; gap:8px; justify-content:center; margin-bottom:12px; margin-top: 4px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#2a7c7c; opacity:1;"></div>
+            <div style="width:8px; height:8px; border-radius:50%; background:#2a7c7c; opacity:0.5;"></div>
+            <div style="width:8px; height:8px; border-radius:50%; background:#2a7c7c; opacity:0.2;"></div>
+          </div>
+          <p style="font-size:0.72rem; color:#9ca3af; text-align:center; font-style:italic; margin-bottom:0;">(bar animates in real-time)</p>
+        </div>
+      </div>
+
+      <div style="flex:1; min-width:200px; max-width:320px; align-self:center;">
+        <div class="annotation-box">
+          <strong>Level bar prominence:</strong> The VU meter bar is deliberately oversized (32px tall) so it is legible in a video call screen share at reduced resolution. The clinician is the primary reader of this bar, not the patient.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>"Clinician is watching":</strong> Serves two audiences — reassures the patient they are not alone, and cues the clinician to actively monitor the meter.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>Large countdown:</strong> Elderly users find a numeric countdown more immediately understandable than abstract fill animations. The bar is secondary information.
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- STATE 3: Result -->
+    <h3>State 3 &mdash; Result (Good &amp; Marginal variants)</h3>
+    <div class="phone-grid">
+      <div class="phone-section">
+        <div class="variant-label" style="color:#059669;">Variant A &mdash; Good</div>
+        <div class="phone-label">Good Result</div>
+        <div class="phone" style="width:290px; min-height:480px;">
+          <div class="progress-bar">
+            <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+            <div class="progress-pips">
+              <div class="pip done"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="result-badge good">
+            <div class="result-icon">&#10003;</div>
+            <div>
+              <div class="result-text">Good signal</div>
+              <div class="result-sub">Level was clear and consistent</div>
+            </div>
+          </div>
+
+          <div class="mini-level-wrap">
+            <div class="mini-level-label">Average level</div>
+            <div class="mini-level-bg">
+              <div class="mini-level-fill" style="width: 58%;"></div>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:auto;">
+            <div class="btn-secondary" style="font-size:0.78rem;">Try again</div>
+            <div class="btn-primary" style="font-size:0.8rem;">Accept &amp; continue &#8594;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-section">
+        <div class="variant-label" style="color:#b45309;">Variant B &mdash; Marginal</div>
+        <div class="phone-label">Marginal Result</div>
+        <div class="phone" style="width:290px; min-height:480px;">
+          <div class="progress-bar">
+            <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+            <div class="progress-pips">
+              <div class="pip" style="background:#f59e0b;"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="result-badge marginal">
+            <div class="result-icon" style="color:#f59e0b;">&#9651;</div>
+            <div>
+              <div class="result-text">Marginal signal</div>
+              <div class="result-sub">Try again if clinician advises</div>
+            </div>
+          </div>
+
+          <div class="mini-level-wrap">
+            <div class="mini-level-label">Average level</div>
+            <div class="mini-level-bg">
+              <div class="mini-level-fill" style="width: 24%; background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:auto;">
+            <div class="btn-secondary" style="font-size:0.78rem; border-color:#f59e0b; color:#b45309;">Try again</div>
+            <div class="btn-primary" style="font-size:0.8rem; background:#6b7280;">Continue anyway &#8594;</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1; min-width:200px; max-width:280px; align-self:center;">
+        <div class="annotation-box">
+          <strong>Why two result states:</strong> "Good" clears the patient to proceed; "Marginal" prompts a retry but still allows continuing if clinician accepts it. The clinician — not the patient — makes this call.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>"Try again" is always shown:</strong> The clinician, not the patient, decides whether to retry. "Continue anyway" is de-emphasized (gray) on the marginal state to nudge retry, but does not block the clinician from accepting.
+        </div>
+      </div>
+    </div>
+
+    <div class="design-notes">
+      <h4>Annotations &amp; Design Rationale</h4>
+      <ul>
+        <li><strong>Level bar prominence:</strong> The VU meter bar is deliberately oversized so it is legible in a video call screen share at reduced resolution. The clinician is the primary reader of this bar, not the patient.</li>
+        <li><strong>"Your clinician is watching":</strong> This line serves two audiences simultaneously — it reassures the patient they are not alone in judging their performance, and it cues the clinician to actively monitor the meter rather than passively observing.</li>
+        <li><strong>Countdown over progress bar:</strong> A large numeric countdown (5&hellip;4&hellip;3&hellip;2&hellip;1) replaces a generic progress bar because elderly users find numbers more immediately understandable than abstract fill animations. The bar is secondary information.</li>
+        <li><strong>Two result variants:</strong> "Good" and "Marginal" map to real acoustic thresholds (signal-to-noise). The marginal state does not block progress — the clinician may accept it if a retry is impractical. An outright failure state (no signal detected) would show a separate error card not shown here.</li>
+        <li><strong>Large tap targets:</strong> All buttons are full-width or half-width with &ge;48px touch height, suitable for patients with reduced fine motor control.</li>
+      </ul>
+    </div>
+  </div>
+
+
+  <!-- ====================================================
+       VISUAL 3: VOICE SELECTION
+  ==================================================== -->
+  <div class="section-card" id="visual-voice">
+    <div class="visual-section-head">
+      <h2 style="border:none; padding:0; margin:0;">Voice Selection Screen Wireframe</h2>
+      <span class="visual-badge">Visual 3 of 3</span>
+    </div>
+    <p class="wireframe-intro">Step 2 of 3 — Coach Voice. Two states shown: Auditioning (patient plays samples) and Selection confirmed (clinician's pick is highlighted). The patient operates the device; the clinician makes the choice.</p>
+
+    <!-- STATE 1: Auditioning -->
+    <h3>State 1 &mdash; Auditioning Voices</h3>
+    <div class="phone-grid">
+      <div class="phone-section">
+        <div class="phone-label">State 1 — Auditioning</div>
+        <div class="phone">
+          <div class="progress-bar">
+            <div class="progress-label">Step 2 of 3 — Coach Voice</div>
+            <div class="progress-pips">
+              <div class="pip done"></div>
+              <div class="pip active"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="screen-heading">Coach Voice</div>
+          <p class="instruction">Your clinician will ask you to play each voice. Press the play button to hear it.</p>
+
+          <div class="voice-card">
+            <div class="voice-label">Voice A</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Warm, calm tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <div class="voice-card playing">
+            <div class="voice-label">Voice B</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Clear, upbeat tone</div>
+            </div>
+            <div class="play-btn playing">&#9646;&#9646; Playing&hellip;</div>
+          </div>
+
+          <div class="voice-card">
+            <div class="voice-label">Voice C</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Gentle, measured tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <p class="hint-text">Listen together with your clinician,<br>then they'll tell you which to choose.</p>
+        </div>
+      </div>
+
+      <div style="flex:1; min-width:200px; max-width:320px; align-self:center;">
+        <div class="annotation-box">
+          <strong>Outlined play button:</strong> Signals "audition only" — patient is just listening, not choosing yet. Consistent with the two-register pattern (outlined = low stakes, filled = commitment).
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>Filled teal + "Playing&hellip;" text:</strong> Shows which sample is currently audible — useful when clinician and patient are on a call together and need a shared reference.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>Clinician direction text below cards:</strong> Sets expectation that the patient is not making the call. "Your clinician will tell you which to choose."
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- STATE 2: Selection confirmed -->
+    <h3>State 2 &mdash; Selection Confirmed</h3>
+    <div class="phone-grid">
+      <div class="phone-section">
+        <div class="phone-label">State 2 — Selection Confirmed</div>
+        <div class="phone">
+          <div class="progress-bar">
+            <div class="progress-label">Step 2 of 3 — Coach Voice</div>
+            <div class="progress-pips">
+              <div class="pip done"></div>
+              <div class="pip active"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="screen-heading">Coach Voice</div>
+          <p class="instruction">Your clinician has chosen a voice for you.</p>
+
+          <div class="voice-card dimmed">
+            <div class="voice-label">Voice A</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Warm, calm tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <div class="voice-card selected">
+            <div class="selected-badge">&#10003;</div>
+            <div class="voice-label">Voice B</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Clear, upbeat tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <div class="voice-card dimmed">
+            <div class="voice-label">Voice C</div>
+            <div class="voice-meta">
+              <div class="voice-meta-name">Gentle, measured tone</div>
+            </div>
+            <div class="play-btn">&#9654; Play</div>
+          </div>
+
+          <p class="hint-text" style="color:#2a7c7c; font-weight:600;">Your clinician selected Voice B for you.</p>
+
+          <div class="btn-primary">Use Voice B &mdash; Next &#8594;</div>
+        </div>
+      </div>
+
+      <div style="flex:1; min-width:200px; max-width:320px; align-self:center;">
+        <div class="annotation-box">
+          <strong>Teal border + light fill:</strong> Clearly identifies the chosen card. Patient doesn't decide — they tap to confirm the clinician's verbal instruction.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>Dimmed (opacity 0.45) unselected cards:</strong> Reinforces that the choice is settled — no further auditioning needed.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>Button copy names the voice ("Voice B"):</strong> Patient can confirm it matches what the clinician said — reduces confusion in a remote context.
+        </div>
+        <div class="annotation-box" style="margin-top:10px;">
+          <strong>State transition:</strong> Triggered when the patient taps a card after the clinician names their choice verbally — not by a separate "confirm" button. The card tap is the confirmation action.
+        </div>
+      </div>
+    </div>
+
+    <div class="rationale-block">
+      <h4>Design Rationale &mdash; Split Control in Remote Setup</h4>
+      <p>This screen embodies a deliberate split of control: the <strong>patient physically operates the device</strong>, but the <strong>clinician makes the clinical decision</strong>. This split exists because (a) the clinician has professional knowledge of which voice characteristics aid LSVT compliance for a given patient, and (b) the patient may not have preferences or may be easily influenced by framing — putting the choice in the clinician's hands removes that cognitive burden.</p>
+      <p>In practice, the interaction is verbal: the clinician says "please play Voice A&hellip; now play Voice B&hellip; okay, let's use Voice B." The patient taps cards to audition, then taps Voice B's card to select it. The UI never asks the patient to <em>choose</em> — it only asks them to <em>play</em> and then <em>confirm</em>.</p>
+      <p>Voice labels are abstract (A, B, C) rather than descriptive names like "Emma" or "Standard Female" — this prevents patients from picking based on label preference rather than auditory experience, and keeps the clinician's verbal instruction unambiguous.</p>
+    </div>
+
+    <div class="design-notes" style="margin-top:16px;">
+      <h4>Additional Annotations</h4>
+      <ul>
+        <li><strong>Voice card tap area:</strong> The full card is tappable (not just the play button) in the auditioning state, to maximise touch target size for elderly users.</li>
+        <li><strong>No "Back" button shown:</strong> Back navigation will exist in the final design; omitted here to focus review on the core interaction pattern.</li>
+        <li><strong>Three voices:</strong> Three options were chosen as the maximum — more options add cognitive load with diminishing clinical benefit. The number may be reduced to two in the final build.</li>
+        <li><strong>Voice metadata ("Warm, calm tone"):</strong> Short descriptor aids the clinician in directing the patient verbally ("the calm sounding one") if a number alone isn't sufficient. Copy is placeholder — final wording TBD.</li>
+      </ul>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<div class="doc-footer">
+  Draft for team review &mdash; May 2026 &mdash; not final design
+</div>
+
+</body>
+</html>
