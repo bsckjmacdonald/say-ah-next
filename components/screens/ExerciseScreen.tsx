@@ -27,7 +27,11 @@ import {
   ALL_RT_PHRASES,
 } from "@/lib/realtimeFeedback";
 import type { RealtimeFeedbackState } from "@/lib/realtimeFeedback";
-import { loadCoachEnabled, loadCoachVoice } from "@/lib/storage";
+import {
+  loadCoachEnabled,
+  loadCoachVoice,
+  loadCoachingLevel,
+} from "@/lib/storage";
 import { coachVoice } from "@/lib/coachVoice";
 import type { UseAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import type { RepCompletion } from "@/lib/types";
@@ -80,11 +84,14 @@ export function ExerciseScreen({
   const coachCueTimerRef = useRef<number | null>(null);
   const speakCoachCuesRef = useRef(false);
   useEffect(() => {
-    speakCoachCuesRef.current = loadCoachEnabled();
+    // Spoken cues require the coach toggle on AND a coaching level above
+    // "minimal" (clinician setting from /setup; "minimal" = visual cue only).
+    const speak = loadCoachEnabled() && loadCoachingLevel() !== "minimal";
+    speakCoachCuesRef.current = speak;
     // Use the clinician-selected voice and warm the cue cache so the first cue
     // plays instantly (and from Kokoro, not the Web Speech fallback).
     coachVoice.setVoice(loadCoachVoice());
-    if (speakCoachCuesRef.current) void coachVoice.prewarm(ALL_RT_PHRASES);
+    if (speak) void coachVoice.prewarm(ALL_RT_PHRASES);
   }, []);
 
   // Start the analyser loop on mount, restart whenever the rep number changes.

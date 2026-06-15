@@ -8,9 +8,11 @@
 import {
   COACH_STORAGE_KEY,
   COACH_VOICE_KEY,
+  COACHING_LEVEL_KEY,
   DEVICE_BASELINE_KEY_PREFIX,
   DEVICE_OFFSET_KEY_PREFIX,
   PB_KEY,
+  SETUP_COMPLETE_KEY,
   SPEAK_COACH_CUES_KEY,
   STORAGE_KEY,
 } from "./constants";
@@ -75,6 +77,34 @@ export function loadCoachVoice(): CoachVoiceId {
 export function saveCoachVoice(voice: CoachVoiceId): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(COACH_VOICE_KEY, voice);
+}
+
+// In-rep coaching verbosity, set by the clinician at /setup.
+//   minimal      — visual cue only, no voice during the rep
+//   standard     — voice cue (default)
+//   encouraging  — voice cue, more frequent
+export type CoachingLevel = "minimal" | "standard" | "encouraging";
+
+export function loadCoachingLevel(): CoachingLevel {
+  if (typeof window === "undefined") return "standard";
+  const raw = window.localStorage.getItem(COACHING_LEVEL_KEY);
+  return raw === "minimal" || raw === "encouraging" ? raw : "standard";
+}
+
+export function saveCoachingLevel(level: CoachingLevel): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(COACHING_LEVEL_KEY, level);
+}
+
+/** True once a clinician has completed /setup on this device. */
+export function loadSetupComplete(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(SETUP_COMPLETE_KEY) === "true";
+}
+
+export function saveSetupComplete(value: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SETUP_COMPLETE_KEY, String(value));
 }
 
 /** Returns the calibrated offset for this deviceId, or `fallback` if uncalibrated. */
