@@ -400,21 +400,44 @@ export function generateSessionCompleteMessage(
 // they remained on screen as text while the spoken line uses these. One per
 // feedback category keeps the audio meaningful without being un-cacheable.
 // ----------------------------------------------------------------------------
-export const POST_REP_SPOKEN: Record<FeedbackCategory, string> = {
-  too_soft: "Let's bring more volume next round.",
-  too_loud: "Great power — ease back just a little.",
-  personal_best: "A new personal best! Wonderful.",
-  great: "Excellent — strong and steady.",
-  good: "Nice work. Keep it going.",
-  keep_trying: "Good effort. Try to hold it a little longer.",
-  tiring: "Take your time, then come back strong.",
+// Several variants per category so the spoken line rotates (deck-deal via
+// pickUnused) instead of repeating. All variants are pre-cached, so whichever
+// is picked plays instantly.
+export const POST_REP_SPOKEN: Record<FeedbackCategory, string[]> = {
+  too_soft: [
+    "Let's bring more volume next round.",
+    "A little louder next time — you've got it.",
+  ],
+  too_loud: [
+    "Great power — ease back just a little.",
+    "Strong voice — relax the effort a touch.",
+  ],
+  personal_best: [
+    "A new personal best! Wonderful.",
+    "That's your best yet — fantastic!",
+  ],
+  great: [
+    "Excellent — strong and steady.",
+    "That's exactly what we want. Great work.",
+  ],
+  good: ["Nice work. Keep it going.", "Good, solid round."],
+  keep_trying: [
+    "Good effort. Try to hold it a little longer.",
+    "Nice — see if you can stretch it next time.",
+  ],
+  tiring: [
+    "Take your time, then come back strong.",
+    "Rest a moment, then give it your all.",
+  ],
 };
 
-export const SESSION_COMPLETE_SPOKEN =
-  "Great session. Your voice is getting stronger!";
+export const SESSION_COMPLETE_SPOKEN: string[] = [
+  "Great session. Your voice is getting stronger!",
+  "Well done — that's real work today.",
+];
 
 // Everything to pre-cache for the post-rep/session audio.
 export const ALL_POST_REP_SPOKEN: string[] = [
-  ...Object.values(POST_REP_SPOKEN),
-  SESSION_COMPLETE_SPOKEN,
+  ...Object.values(POST_REP_SPOKEN).flat(),
+  ...SESSION_COMPLETE_SPOKEN,
 ];

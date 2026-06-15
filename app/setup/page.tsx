@@ -23,7 +23,6 @@ import Link from "next/link";
 import { buildAWeightingCoefficients } from "@/lib/aWeighting";
 import { rmsToDbFs, setActiveCalibrationOffset } from "@/lib/audio";
 import { TARGET_FLOOR_DEFAULT_DB } from "@/lib/constants";
-import { ALL_RT_PHRASES } from "@/lib/realtimeFeedback";
 import { ALL_POST_REP_SPOKEN } from "@/lib/feedback";
 import {
   COACH_VOICES,
@@ -325,11 +324,12 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
   const accept = useCallback(() => {
     coachVoice.setVoice(selected);
     saveCoachVoice(selected);
-    // Warm the coach phrases for the chosen voice now, in the background. The
-    // worker + cache persist across the in-app navigation, so the first round
-    // already uses the neural voice. Post-rep phrases first (few and short) so
-    // they're ready by the time the first rep ends; then the in-rep cues.
-    void coachVoice.prewarm([...ALL_POST_REP_SPOKEN, ...ALL_RT_PHRASES]);
+    // Warm just the (few, short) post-rep phrases for the chosen voice now, in
+    // the background. The cache persists across the in-app navigation, so the
+    // first round's post-rep already uses the neural voice. The in-rep cues are
+    // warmed in the main app's pre-rep screen, where they get full priority —
+    // warming them here too would delay the cues the user hears first.
+    void coachVoice.prewarm(ALL_POST_REP_SPOKEN);
     onDone();
   }, [selected, onDone]);
 
