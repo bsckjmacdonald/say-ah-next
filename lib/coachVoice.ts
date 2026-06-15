@@ -85,6 +85,14 @@ class CoachVoiceService {
   // De-dupe concurrent synths of the same phrase.
   private inFlight = new Map<string, Promise<AudioBuffer | null>>();
 
+  // Static fallback batch (pre-generated WAVs, see scripts/generate-coach-audio
+  // and public/coach/). voice -> [url]. Played in the chosen voice, dealt
+  // without repeating within a session, when a fresh synth isn't ready.
+  private fallbackManifest: Record<string, string[]> | null = null;
+  private fallbackManifestPromise: Promise<void> | null = null;
+  private fallbackBufs = new Map<string, AudioBuffer>(); // url -> buffer
+  private fallbackDeck = new Map<string, number[]>(); // voice -> remaining indices
+
   setVoice(voice: CoachVoiceId): void {
     this.voice = voice;
   }
@@ -318,6 +326,117 @@ class CoachVoiceService {
     };
     src.start();
     this.current = src;
+  }
+
+  // ── Static fallback batch ────────────────────────────────────────────────
+
+  private loadFallbackManifest(): Promise<void> {
+    if (this.fallbackManifest) return Promise.resolve();
+    if (!this.fallbackManifestPromise) {
+      this.fallbackManifestPromise = fetch("/coach/fallback-manifest.json")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((m) => {
+          this.fallbackManifest = m;
+        })
+        .catch(() => {
+          /* no manifest → fallback simply unavailable */
+        });
+    }
+    return this.fallbackManifestPromise;
+  }
+
+  private async fetchFallbackBuffer(url: string): Promise<AudioBuffer | null> {
+    const cached = this.fallbackBufs.get(url);
+    if (cached) return cached;
+    const ctx = this.getCtx();
+    if (!ctx) return null;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
+      this.fallbackBufs.set(url, buf);
+      return buf;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Next fallback URL for the current voice, dealt without repeating until the
+   * deck is exhausted (then reshuffled). */
+  private nextFallbackUrl(): string | null {
+    const urls =
+      this.fallbackManifest?.[this.voice] ??
+      this.fallbackManifest?.[DEFAULT_COACH_VOICE];
+    if (!urls || urls.length === 0) return null;
+    let deck = this.fallbackDeck.get(this.voice);
+    if (!deck || deck.length === 0) {
+      deck = urls.map((_, i) => i);
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      this.fallbackDeck.set(this.voice, deck);
+    }
+    const idx = deck.pop();
+    return idx === undefined ? null : urls[idx];
+  }
+
+  /** Warm the fallback buffers for the current voice in the background, so the
+   * first fallback plays without a fetch/decode hitch. */
+  async prefetchFallbacks(): Promise<void> {
+    await this.loadFallbackManifest();
+    const urls = this.fallbackManifest?.[this.voice];
+    if (!urls) return;
+    for (const url of urls) await this.fetchFallbackBuffer(url);
+  }
+
+  /** Play one non-recycling fallback phrase in the chosen voice. Returns false
+   * if no fallback audio is available. */
+  async playFallback(): Promise<boolean> {
+    await this.loadFallbackManifest();
+    const url = this.nextFallbackUrl();
+    if (!url) return false;
+    const buf = await this.fetchFallbackBuffer(url);
+    if (!buf) return false;
+    this.playBuffer(buf);
+    return true;
+  }
+
+  /**
+   * Speak a CONTEXTUAL message (responsive to the actual rep). Tries a fresh
+   * Kokoro synth first — but only if the model is already loaded, so we don't
+   * trigger the 82 MB download just for this. If fresh isn't ready within
+   * `maxWaitMs`, plays a non-recycling static fallback in the chosen voice
+   * (never the robotic web voice unless even the fallback is unavailable).
+   */
+  async speakContextual(
+    text: string,
+    opts?: { maxWaitMs?: number },
+  ): Promise<void> {
+    if (!text) return;
+    const maxWaitMs = opts?.maxWaitMs ?? 3000;
+    const key = `${this.voice}|1|${text}`;
+
+    const cached = this.cache.get(key);
+    if (cached) {
+      this.playBuffer(cached);
+      return;
+    }
+    if (this.loaded && !this.workerFailed) {
+      const synthP = this.synth(key, text, 1.0, "high");
+      const buf = await Promise.race([
+        synthP,
+        new Promise<null>((r) => setTimeout(() => r(null), maxWaitMs)),
+      ]);
+      if (buf) {
+        this.playBuffer(buf);
+        return;
+      }
+      // Timed out — synthP keeps caching for a later identical message.
+    }
+    if (await this.playFallback()) return;
+    this.stopBuffer();
+    speakMessage(text); // last resort
   }
 
   /** Stop any in-progress coach audio (buffer playback and Web Speech). */

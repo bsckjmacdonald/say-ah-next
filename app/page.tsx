@@ -8,16 +8,10 @@
 // callbacks that update both the screen state and the relevant session state.
 // ============================================================================
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { TOTAL_REPS, DB_SPL_CALIBRATION_OFFSET } from "@/lib/constants";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useSession, type RepResult } from "@/hooks/useSession";
-import {
-  POST_REP_SPOKEN,
-  SESSION_COMPLETE_SPOKEN,
-  pickUnused,
-} from "@/lib/feedback";
-import type { FeedbackHistory } from "@/lib/types";
 import { primeVoices } from "@/lib/tts";
 import { coachVoice } from "@/lib/coachVoice";
 import { setActiveCalibrationOffset } from "@/lib/audio";
@@ -47,10 +41,6 @@ export default function Page() {
 
   const analyser = useAudioAnalyser({ coachEnabled });
   const session = useSession(TOTAL_REPS, analyser.deviceId);
-
-  // Deck-deal cycling state for the spoken post-rep / session phrases, so they
-  // rotate through the variants instead of repeating.
-  const postRepDeckRef = useRef<FeedbackHistory>({});
 
   // Apply the per-device calibration offset once the mic deviceId resolves, so
   // every dB SPL conversion (meter, zones, coach) uses the calibrated value.
@@ -105,15 +95,14 @@ export default function Page() {
     (completion: RepCompletion) => {
       const result = session.completeRep(completion);
       setRepResult(result);
-      // Spoken feedback uses a SHORT pre-cached phrase, rotated per category
-      // (deck-deal), so it plays instantly in the chosen Kokoro voice and
-      // doesn't repeat. The detailed message stays on screen.
-      const spoken = pickUnused(
-        postRepDeckRef.current,
-        `post.${result.category}`,
-        POST_REP_SPOKEN[result.category],
-      );
-      void coachVoice.speak(spoken, { maxWaitMs: 2500 });
+      // Speak the actual contextual feedback: try a fresh Kokoro synth first
+      // (responsive to this rep), and if it isn't ready quickly, play a varied
+      // non-recycling fallback in the chosen voice — never the robotic web
+      // voice. The detailed message also stays on screen.
+      if (result.feedback.spoken)
+        void coachVoice.speakContextual(result.feedback.spoken, {
+          maxWaitMs: 3000,
+        });
       setScreen("rep-result");
     },
     [session],
@@ -129,14 +118,8 @@ export default function Page() {
     coachVoice.cancel();
     const msg = session.finishSession();
     setSummaryMessage(msg);
-    // Spoken closing uses a rotated pre-cached phrase (instant Kokoro); the
-    // detailed summary stays on screen.
-    const spoken = pickUnused(
-      postRepDeckRef.current,
-      "session",
-      SESSION_COMPLETE_SPOKEN,
-    );
-    void coachVoice.speak(spoken, { maxWaitMs: 2500 });
+    // Fresh closing if Kokoro is ready, else a varied in-voice fallback.
+    void coachVoice.speakContextual(msg, { maxWaitMs: 3000 });
     setScreen("session-complete");
   }, [session]);
 
