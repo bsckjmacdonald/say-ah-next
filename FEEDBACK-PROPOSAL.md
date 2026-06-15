@@ -55,10 +55,14 @@ cut-off (#2), gap/restart detection (#8). **Exception:** the timer-overrun fix
 
 ---
 
-## WS1 — Calibration + dB-based zones  *(core, highest value)*
+## WS1 — Calibration + adaptive, baseline-anchored dB-SPL zones  *(core, highest value)*
 
 **Addresses:** #1 (loudness wrong both directions), #13 (healthy high loudness
 penalized), #7 personal-best bug, #7 timer overrun.
+
+**Design resolved 2026-06** from clinician input — see
+`project_clinical_loudness_model` memory. The zone is adaptive and
+personalized, not a fixed band.
 
 ### 1a. Build the calibration screen
 Per the locked SPL design (see `project_spl_decisions` memory and
@@ -75,14 +79,29 @@ Infrastructure already present: `deviceId`, `needsRecalibration`,
 in constants. **Not yet present:** any calibration screen or state-machine node.
 Scaffold via the `new-screen` skill.
 
-### 1b. Redefine zones in dB SPL
-- Replace `METER_SOFT_THRESHOLD` / `METER_LOUD_THRESHOLD` (RMS fractions in
-  `lib/constants.ts:40-41`) with dB-SPL target-band thresholds.
-- Convert per-frame RMS → calibrated dB SPL (using the device offset) *before*
-  the zone decision, in both `feedback.ts:determineFeedbackCategory` and the
-  meter/strip-chart rendering path.
-- Honor the clinical note: some PWP are healthy at 80–89 dB; coach "ease effort,"
-  never imply shouting.
+### 1b. Adaptive, baseline-anchored green zone (dB SPL)
+The target zone is **not** a fixed band. Loudness is the primary goal ("long and
+soft is no good"); the zone is personalized and adaptive:
+
+- **Floor = the patient's baseline loudness, preset by the clinician during
+  setup** (decision: clinician presets it). If they start at 65 dB, 65 is the
+  bottom of green. Fallback: auto-measure the baseline from the first reps when a
+  device was never configured (unsupervised home use).
+- **Floor ratchets UP automatically** as the patient improves (decision:
+  auto-adapt with clinician override). Conservative and always reinforcing —
+  never lower the floor mid-session, never discourage.
+- **Ceiling (interim): a provisional absolute amplitude ceiling ≈ 85 dB SPL**
+  (calibrated); healthy sustained target ≈ 78–80 dB. An amplitude ceiling cannot
+  distinguish healthy-loud from hyperfunction — that is the **F0 fast-follow**
+  (see below). Until it lands, keep the ceiling deliberately permissive so
+  healthy 80–85 dB voices are **not** flagged "too loud".
+- **Implementation:** replace `METER_SOFT_THRESHOLD` / `METER_LOUD_THRESHOLD`
+  (RMS fractions, `lib/constants.ts:40-41`) with calibrated dB-SPL thresholds;
+  the floor becomes per-patient persisted state (per-device) rather than a
+  constant. Convert per-frame RMS → calibrated dB SPL *before* the zone decision
+  in both `feedback.ts:determineFeedbackCategory` and the meter/strip-chart path.
+- **Clinician override:** preset band + baseline are editable via the clinician
+  setup flow (ties into `CLINICIAN-SETUP-REVIEW.md` / `docs/setup-review/`).
 
 ### 1c. Wire the stored offset into the live path
 `DB_SPL_CALIBRATION_OFFSET` is currently a static constant and `loadDeviceOffset`
@@ -98,7 +117,8 @@ actually stopped. ~2 lines. Fixes the "timer keeps going 2–3 s after I stopped
 that frustrated a real patient (May 14 session).
 
 **Risk:** medium-high — most clinically sensitive path.
-**Blocked on:** clinical dB-SPL target band (see Open Questions).
+**Status:** design resolved (clinician input 2026-06); ready to build. The F0
+hyperfunction ceiling is split out to a fast-follow PR (see below).
 
 ---
 
@@ -177,29 +197,52 @@ legibility, #10 (playback artifact).
 
 ## WS5 — Clinical rep-logic
 
-**Addresses:** #12 (don't count short / auto-discarded reps; sustained-rep
-targets).
+**Addresses:** #12 (don't count unhealthy reps; loudness-gated counting).
 
-- Don't count reps below a minimum duration toward the 15; optionally extend the
-  set when early reps are too short (Heather: 15 *good* sustained reps, or a total
-  phonation time of 6–10 min).
-- Touches `useSession` rep accounting and `constants.ts` (`TOTAL_REPS`,
-  `TARGET_DURATION_SECONDS`).
+**Design resolved 2026-06** (clinician input — see
+`project_clinical_loudness_model`). Counting is **loudness-gated, not
+duration-gated**:
+
+- A rep **counts toward the 15 if it achieved adequate loudness (in the green
+  zone)** — regardless of length. A 2 s rep from a severe patient counts if it
+  was loud enough. There is **no fixed minimum duration**.
+- Reps auto-discarded as **unhealthy** (too quiet / cut off) do **not** count.
+- Default session target stays **15 reps**, but adaptive: lean toward *more* reps
+  when they're short, *fewer* when very long. (Not a fixed total-duration goal —
+  per-rep duration legitimately ranges 2 s to 20+ s.)
+- Touches `useSession` rep accounting and `constants.ts` (`TOTAL_REPS`); the
+  count increments on loudness-qualifying reps rather than every completed rep.
 
 **Risk:** low-medium.
-**Blocked on:** clinical spec (see Open Questions).
+**Status:** design resolved; ready to build.
 
 ---
 
 ## Suggested sequencing
 
 1. **WS3 (Windows)** — ✅ done (PR #6, branch `fix/windows-audio-capture`).
-2. **WS1 (calibration + dB zones)** — core clinical fix; start once the target
-   band is agreed.
+2. **WS1 (calibration + adaptive dB-SPL zones)** — core clinical fix; design
+   resolved, ready to build.
 3. **WS2 (Kokoro)** — in parallel with WS1; independent code.
-4. **WS4 / WS5** — polish + clinical logic; fold in once specs land.
+4. **WS4 / WS5** — polish + clinical logic; design resolved, ready to build.
+5. **Fast-follow (post-batch): F0 hyperfunction ceiling** — separate PR.
 
 Pre-merge: run the `session-check` QA checklist.
+
+## Fast-follow (post-batch) — F0 hyperfunction ceiling
+
+Deferred from this batch (decision 2026-06). Replaces the interim amplitude
+ceiling with a pitch-informed one so healthy-loud is never flagged as
+hyperfunction:
+- Add **YIN** pitch detection: a dedicated ~2048-sample time-domain buffer
+  alongside the existing RMS path in `useAudioAnalyser`; run the pitch pass at
+  ~20–30 Hz (not every frame).
+- Capture the patient's **comfortable-baseline F0** during clinician setup (same
+  step that presets the loudness band).
+- Heuristic: loud **and** F0 risen a couple of semitones above baseline (and/or
+  unstable) → soft "ease the effort — same voice" cue. Loud **and** F0 near
+  baseline → healthy, stays green. Conservative, clinician-overridable, framed as
+  a soft cue (proxy, not a diagnosis).
 
 ## Branching (so WS3 ships with the batch)
 
@@ -215,14 +258,19 @@ present in the batch branch before opening the batch PR.
 
 ---
 
-## Open questions (need clinical input before building)
+## Open questions — RESOLVED 2026-06 (clinician input)
 
-1. **dB-SPL target band (WS1b):** what are the green-zone lower and upper bounds
-   in dB SPL? How is the upper bound reconciled with healthy PWP at 80–89 dB —
-   wider band, or per-patient adjustable?
-2. **Per-patient targets:** Heather and Beth both asked whether the SLP can set
-   goals per patient. In scope for this batch, or a later clinician-setup feature?
-3. **Rep-logic spec (WS5):** minimum countable rep duration; target rep-count vs.
-   total-phonation-time; whether to auto-extend the set.
-4. **Calibration friction:** is a bottle-whistle calibration step acceptable for
-   elderly PD patients at home, or should it be clinician-run during setup only?
+1. **dB-SPL target band (WS1b):** ✅ Not a fixed band. Floor = patient baseline,
+   clinician-preset, auto-ratchets up; ceiling interim ≈ 85 dB (healthy ~78–80),
+   with F0 hyperfunction discrimination as a fast-follow. See WS1b.
+2. **Per-patient targets:** ✅ Yes — clinician presets per patient during setup,
+   auto-adapts at home with clinician override. Folded into WS1b + clinician
+   setup flow.
+3. **Rep-logic spec (WS5):** ✅ Loudness-gated, not duration-gated; no fixed
+   minimum duration; short loud reps count; unhealthy reps don't; default 15
+   reps, adaptive. See WS5.
+
+**Still open:**
+4. **Calibration friction:** the *band* is clinician-preset, so the bottle-whistle
+   *mic* calibration is presumed clinician-run during setup too — confirm, and
+   decide the home re-calibration story (e.g. on `devicechange`).
