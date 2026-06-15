@@ -112,6 +112,13 @@ async function captureMeanLevel(
 export default function SetupPage() {
   const [step, setStep] = useState<Step>("welcome");
 
+  // Start downloading the Kokoro model immediately (in the worker) so it's
+  // ready by the time the clinician reaches the voice step, instead of a ~30 s
+  // wait there.
+  useEffect(() => {
+    void coachVoice.load();
+  }, []);
+
   return (
     <main style={s.main}>
       <header style={s.header}>
@@ -257,6 +264,8 @@ function CalibrateStep({ onDone }: { onDone: () => void }) {
 }
 
 // ── Step 2: voice ─────────────────────────────────────────────────────────
+const SAMPLE_PHRASE = "Great effort! Keep that volume up!";
+
 function VoiceStep({ onDone }: { onDone: () => void }) {
   const [selected, setSelected] = useState<CoachVoiceId>(DEFAULT_COACH_VOICE);
   const [playing, setPlaying] = useState<CoachVoiceId | null>(null);
@@ -265,13 +274,14 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
   );
   const [progress, setProgress] = useState("Loading voice model (~82 MB)…");
 
-  // Download the Kokoro model when this step opens so the samples are the real
-  // neural voices, not the Web Speech fallback. Without this, speak() finds no
-  // loaded model and every "voice" sounds identical.
+  // Get every voice fully ready before enabling Play: download the model, then
+  // pre-synthesize the sample for all four voices (in the worker). onnxruntime's
+  // first inference is slow (~tens of seconds), so doing this up front means
+  // each Play is instant and the clinician never waits after clicking.
   useEffect(() => {
     let cancelled = false;
-    coachVoice
-      .load((info) => {
+    (async () => {
+      await coachVoice.load((info) => {
         if (cancelled) return;
         if (info.status === "progress" && info.name && info.progress != null) {
           setProgress(
@@ -280,12 +290,21 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
             )}%`,
           );
         }
-      })
-      .then(() => {
-        if (!cancelled) {
-          setModel(coachVoice.isKokoroReady() ? "ready" : "fallback");
-        }
       });
+      if (cancelled) return;
+      if (!coachVoice.isKokoroReady()) {
+        setModel("fallback");
+        return;
+      }
+      setProgress("Preparing voices…");
+      for (const v of COACH_VOICES) {
+        if (cancelled) return;
+        coachVoice.setVoice(v.id);
+        await coachVoice.prewarm([SAMPLE_PHRASE]);
+      }
+      coachVoice.setVoice(DEFAULT_COACH_VOICE);
+      if (!cancelled) setModel("ready");
+    })();
     return () => {
       cancelled = true;
     };
@@ -295,12 +314,9 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
     setSelected(id);
     setPlaying(id);
     coachVoice.setVoice(id);
-    // Wait for the real Kokoro synthesis here — the whole point of this step is
-    // to compare the neural voices. (Elsewhere speak() falls back fast to avoid
-    // lag, but here the clinician is explicitly auditioning voices.)
-    await coachVoice.speak("Great effort! Keep that volume up!", {
-      maxWaitMs: 15000,
-    });
+    // Samples are pre-cached above, so this plays instantly. The wait budget is
+    // just a safety net.
+    await coachVoice.speak(SAMPLE_PHRASE, { maxWaitMs: 15000 });
     setPlaying(null);
   }, []);
 

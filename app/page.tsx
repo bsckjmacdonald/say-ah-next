@@ -19,6 +19,7 @@ import {
   loadCoachEnabled,
   saveCoachEnabled,
   loadCoachVoice,
+  loadCoachingLevel,
   loadDeviceOffset,
 } from "@/lib/storage";
 import { ConstraintDiagnostic } from "@/components/ConstraintDiagnostic";
@@ -60,6 +61,11 @@ export default function Page() {
     setCoachEnabled(loadCoachEnabled());
     primeVoices();
     coachVoice.setVoice(loadCoachVoice());
+    // Start loading the Kokoro model early (in the worker) when the coach is
+    // on, so it's warm by the first round instead of cold-loading mid-session.
+    if (loadCoachEnabled() && loadCoachingLevel() !== "minimal") {
+      void coachVoice.load();
+    }
   }, []);
 
   const handleCoachToggle = useCallback((value: boolean) => {
