@@ -23,6 +23,7 @@ import Link from "next/link";
 import { buildAWeightingCoefficients } from "@/lib/aWeighting";
 import { rmsToDbFs, setActiveCalibrationOffset } from "@/lib/audio";
 import { TARGET_FLOOR_DEFAULT_DB } from "@/lib/constants";
+import { ALL_RT_PHRASES } from "@/lib/realtimeFeedback";
 import {
   COACH_VOICES,
   DEFAULT_COACH_VOICE,
@@ -323,6 +324,11 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
   const accept = useCallback(() => {
     coachVoice.setVoice(selected);
     saveCoachVoice(selected);
+    // Warm the full in-rep cue pool for the chosen voice now, in the background.
+    // The worker + cache persist across the in-app navigation to the main app,
+    // so the first round already plays the neural voice instead of falling back
+    // to the browser voice while synthesis catches up.
+    void coachVoice.prewarm(ALL_RT_PHRASES);
     onDone();
   }, [selected, onDone]);
 
