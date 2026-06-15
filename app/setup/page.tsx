@@ -295,7 +295,12 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
     setSelected(id);
     setPlaying(id);
     coachVoice.setVoice(id);
-    await coachVoice.speak("Great effort! Keep that volume up!");
+    // Wait for the real Kokoro synthesis here — the whole point of this step is
+    // to compare the neural voices. (Elsewhere speak() falls back fast to avoid
+    // lag, but here the clinician is explicitly auditioning voices.)
+    await coachVoice.speak("Great effort! Keep that volume up!", {
+      maxWaitMs: 15000,
+    });
     setPlaying(null);
   }, []);
 
