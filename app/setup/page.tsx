@@ -260,6 +260,36 @@ function CalibrateStep({ onDone }: { onDone: () => void }) {
 function VoiceStep({ onDone }: { onDone: () => void }) {
   const [selected, setSelected] = useState<CoachVoiceId>(DEFAULT_COACH_VOICE);
   const [playing, setPlaying] = useState<CoachVoiceId | null>(null);
+  const [model, setModel] = useState<"loading" | "ready" | "fallback">(
+    "loading",
+  );
+  const [progress, setProgress] = useState("Loading voice model (~82 MB)…");
+
+  // Download the Kokoro model when this step opens so the samples are the real
+  // neural voices, not the Web Speech fallback. Without this, speak() finds no
+  // loaded model and every "voice" sounds identical.
+  useEffect(() => {
+    let cancelled = false;
+    coachVoice
+      .load((info) => {
+        if (cancelled) return;
+        if (info.status === "progress" && info.name && info.progress != null) {
+          setProgress(
+            `Downloading ${info.name.split("/").at(-1)} — ${Math.round(
+              info.progress,
+            )}%`,
+          );
+        }
+      })
+      .then(() => {
+        if (!cancelled) {
+          setModel(coachVoice.isKokoroReady() ? "ready" : "fallback");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const sample = useCallback(async (id: CoachVoiceId) => {
     setSelected(id);
@@ -278,9 +308,15 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
   return (
     <section>
       <p style={s.body}>
-        Play each voice and pick the one your clinician chooses. First play
-        loads the voice model (~82 MB, cached after).
+        Play each voice and pick the one your clinician chooses.
       </p>
+      {model === "loading" && <p style={s.loadingNote}>{progress}</p>}
+      {model === "fallback" && (
+        <p style={s.error}>
+          The neural voices couldn&apos;t load on this device, so the browser
+          voice is used — all options will sound the same. Pick one and continue.
+        </p>
+      )}
       {COACH_VOICES.map((v) => (
         <div
           key={v.id}
@@ -290,7 +326,11 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
           }}
         >
           <button
-            style={playing === v.id ? s.btnPlayOn : s.btnPlay}
+            style={{
+              ...(playing === v.id ? s.btnPlayOn : s.btnPlay),
+              opacity: model === "loading" ? 0.5 : 1,
+            }}
+            disabled={model === "loading"}
             onClick={() => sample(v.id)}
           >
             {playing === v.id ? "▶ Playing…" : "▶ Play"}
@@ -462,4 +502,5 @@ const s: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   error: { color: "#b91c1c", fontSize: 14, marginTop: 14 },
+  loadingNote: { fontSize: 14, color: "#2a7c7c", marginBottom: 12 },
 };
