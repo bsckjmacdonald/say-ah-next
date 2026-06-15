@@ -8,6 +8,7 @@
 import {
   COACH_STORAGE_KEY,
   COACH_VOICE_KEY,
+  DEVICE_BASELINE_KEY_PREFIX,
   DEVICE_OFFSET_KEY_PREFIX,
   PB_KEY,
   SPEAK_COACH_CUES_KEY,
@@ -86,6 +87,28 @@ export function loadDeviceOffset(deviceId: string, fallback: number): number {
 export function saveDeviceOffset(deviceId: string, offset: number): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(DEVICE_OFFSET_KEY_PREFIX + deviceId, String(offset));
+}
+
+/**
+ * Per-device green-floor (baseline) in dB SPL. Set by the clinician during
+ * /setup and ratcheted up as the patient improves; falls back to the provided
+ * default when uncalibrated. Returns `fallback` if no deviceId yet.
+ */
+export function loadDeviceBaseline(
+  deviceId: string | null,
+  fallback: number,
+): number {
+  if (typeof window === "undefined" || !deviceId) return fallback;
+  const raw = window.localStorage.getItem(DEVICE_BASELINE_KEY_PREFIX + deviceId);
+  return raw ? parseFloat(raw) : fallback;
+}
+
+export function saveDeviceBaseline(deviceId: string, floorDb: number): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    DEVICE_BASELINE_KEY_PREFIX + deviceId,
+    String(floorDb),
+  );
 }
 
 export function saveSession(durations: number[]): void {

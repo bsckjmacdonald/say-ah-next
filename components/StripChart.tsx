@@ -12,12 +12,13 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
-  CHART_MAX_LEVEL,
-  METER_LOUD_THRESHOLD,
-  METER_SOFT_THRESHOLD,
+  METER_AXIS_MAX_DB,
+  METER_AXIS_MIN_DB,
   STRIP_INTERVAL_MS,
   STRIP_MAX_POINTS,
+  TARGET_CEILING_DB,
 } from "@/lib/constants";
+import { rmsToDbSpl } from "@/lib/audio";
 
 // How many x-axis points (seconds) to show. Starts at 10 s, ratchets up in
 // 5 s increments once buffer grows beyond the current ceiling.
@@ -28,6 +29,8 @@ function computeVisiblePoints(n: number): number {
 interface RenderOpts {
   visiblePoints: number;
   timeLabels: boolean;
+  floorDb: number;
+  ceilingDb: number;
 }
 
 function renderLoudnessChart(
@@ -37,23 +40,27 @@ function renderLoudnessChart(
   buffer: number[],
   opts: RenderOpts,
 ) {
-  const { visiblePoints, timeLabels } = opts;
+  const { visiblePoints, timeLabels, floorDb, ceilingDb } = opts;
   // cH = full canvas height — time labels are drawn inset (no reserved strip).
   const cH = H;
 
   ctx.clearRect(0, 0, W, H);
 
-  const scl = (lvl: number) =>
-    Math.min(Math.max(lvl, 0), CHART_MAX_LEVEL) / CHART_MAX_LEVEL;
+  // Render in calibrated dB SPL over the fixed visible axis. The buffer holds
+  // RMS averages, so convert each to dB before positioning.
+  const span = METER_AXIS_MAX_DB - METER_AXIS_MIN_DB;
+  const dbToFrac = (db: number) =>
+    Math.min(Math.max((db - METER_AXIS_MIN_DB) / span, 0), 1);
+  const rmsToFrac = (rms: number) => dbToFrac(rmsToDbSpl(rms));
 
-  const softFrac = scl(METER_SOFT_THRESHOLD);
-  const loudFrac = scl(METER_LOUD_THRESHOLD);
+  const floorFrac = dbToFrac(floorDb);
+  const ceilFrac = dbToFrac(ceilingDb);
 
   // Zone background bands
   const bands = [
-    { yFrac: 0,            hFrac: 1 - loudFrac,          color: "rgba(224,123,90,0.28)" },
-    { yFrac: 1 - loudFrac, hFrac: loudFrac - softFrac,   color: "rgba(52,199,89,0.28)"  },
-    { yFrac: 1 - softFrac, hFrac: softFrac,               color: "rgba(244,196,52,0.28)" },
+    { yFrac: 0,             hFrac: 1 - ceilFrac,          color: "rgba(224,123,90,0.28)" },
+    { yFrac: 1 - ceilFrac,  hFrac: ceilFrac - floorFrac,  color: "rgba(52,199,89,0.28)"  },
+    { yFrac: 1 - floorFrac, hFrac: floorFrac,             color: "rgba(244,196,52,0.28)" },
   ];
   bands.forEach((z) => {
     ctx.fillStyle = z.color;
@@ -65,8 +72,8 @@ function renderLoudnessChart(
   ctx.setLineDash([4, 4]);
   ctx.strokeStyle = "rgba(0,0,0,0.22)";
   ctx.lineWidth = 1;
-  [METER_LOUD_THRESHOLD, METER_SOFT_THRESHOLD].forEach((lvl) => {
-    const y = cH * (1 - scl(lvl));
+  [ceilFrac, floorFrac].forEach((f) => {
+    const y = cH * (1 - f);
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(W, y);
@@ -79,9 +86,9 @@ function renderLoudnessChart(
   ctx.font = '10px -apple-system,"SF Pro Text",Arial,sans-serif';
   ctx.textAlign = "right";
   const zoneLabels = [
-    { text: "quite loud", y: (cH * (1 - loudFrac)) / 2,            color: "rgba(192,78,38,0.65)"  },
-    { text: "target",     y: cH * (1 - (loudFrac + softFrac) / 2), color: "rgba(26,106,26,0.65)"  },
-    { text: "too soft",   y: cH * (1 - softFrac / 2),              color: "rgba(138,104,0,0.65)"  },
+    { text: "quite loud", y: (cH * (1 - ceilFrac)) / 2,             color: "rgba(192,78,38,0.65)"  },
+    { text: "target",     y: cH * (1 - (ceilFrac + floorFrac) / 2), color: "rgba(26,106,26,0.65)"  },
+    { text: "too soft",   y: cH * (1 - floorFrac / 2),              color: "rgba(138,104,0,0.65)"  },
   ];
   zoneLabels.forEach((l) => {
     ctx.fillStyle = l.color;
@@ -117,10 +124,11 @@ function renderLoudnessChart(
   if (!buffer || buffer.length === 0) return;
 
   const xStep = W / visiblePoints;
-  const lvlToY = (lvl: number) => cH * (1 - scl(lvl));
+  const lvlToY = (lvl: number) => cH * (1 - rmsToFrac(lvl));
   const zoneClr = (lvl: number) => {
-    if (lvl < METER_SOFT_THRESHOLD) return "#a88a00";
-    if (lvl < METER_LOUD_THRESHOLD) return "#157031";
+    const db = rmsToDbSpl(lvl);
+    if (db < floorDb) return "#a88a00";
+    if (db < ceilingDb) return "#157031";
     return "#a8401e";
   };
 
@@ -185,25 +193,34 @@ export interface LiveStripChartHandle {
   reset: () => void;
 }
 
-export const LiveStripChart = forwardRef<LiveStripChartHandle>(
-  function LiveStripChart(_props, ref) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const bufferRef = useRef<number[]>([]);
+export const LiveStripChart = forwardRef<
+  LiveStripChartHandle,
+  { floorDb: number }
+>(function LiveStripChart({ floorDb }, ref) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bufferRef = useRef<number[]>([]);
+  // Latest floor, readable from the imperative draw() closure.
+  const floorDbRef = useRef(floorDb);
+  useEffect(() => {
+    floorDbRef.current = floorDb;
+  }, [floorDb]);
 
-    const sizeAndDraw = (buffer: number[]) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      if (!canvas.width || canvas.width !== canvas.offsetWidth) {
-        canvas.width = canvas.offsetWidth || 480;
-        canvas.height = canvas.offsetHeight || 200;
-      }
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
-        visiblePoints: computeVisiblePoints(buffer.length),
-        timeLabels: true,
-      });
-    };
+  const sizeAndDraw = (buffer: number[]) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (!canvas.width || canvas.width !== canvas.offsetWidth) {
+      canvas.width = canvas.offsetWidth || 480;
+      canvas.height = canvas.offsetHeight || 200;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
+      visiblePoints: computeVisiblePoints(buffer.length),
+      timeLabels: true,
+      floorDb: floorDbRef.current,
+      ceilingDb: TARGET_CEILING_DB,
+    });
+  };
 
     useImperativeHandle(
       ref,
@@ -236,7 +253,13 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
 // ----------------------------------------------------------------------------
 // Final chart — drawn from the rep snapshot
 // ----------------------------------------------------------------------------
-export function FinalStripChart({ buffer }: { buffer: number[] }) {
+export function FinalStripChart({
+  buffer,
+  floorDb,
+}: {
+  buffer: number[];
+  floorDb: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -249,8 +272,10 @@ export function FinalStripChart({ buffer }: { buffer: number[] }) {
     renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
       visiblePoints: computeVisiblePoints(buffer.length),
       timeLabels: true,
+      floorDb,
+      ceilingDb: TARGET_CEILING_DB,
     });
-  }, [buffer]);
+  }, [buffer, floorDb]);
 
   return <canvas ref={canvasRef} className="result-strip-chart" />;
 }

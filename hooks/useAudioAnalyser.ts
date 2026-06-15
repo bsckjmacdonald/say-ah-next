@@ -431,7 +431,11 @@ export function useAudioAnalyser({
         if (r.offsetStartTime) {
           const heldSilence = Date.now() - r.offsetStartTime;
           if (heldSilence >= OFFSET_HOLD_MS) {
-            const duration = (Date.now() - r.onsetTime) / 1000;
+            // Duration ends when the voice actually stopped (offsetStartTime),
+            // NOT now — otherwise the OFFSET_HOLD_MS of trailing silence is
+            // counted, which made the timer run ~1.5 s past when the patient
+            // stopped (frustrated a real patient in testing).
+            const duration = (r.offsetStartTime - r.onsetTime) / 1000;
             finishRep(duration);
             return;
           }

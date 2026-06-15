@@ -13,6 +13,7 @@ import { CoachToggle } from "@/components/CoachToggle";
 interface Props {
   result: RepResult;
   durations: number[];
+  floorDb: number;
   coachEnabled: boolean;
   onCoachToggle: (value: boolean) => void;
   onNext: () => void;
@@ -23,6 +24,7 @@ interface Props {
 export function RepResultScreen({
   result,
   durations,
+  floorDb,
   coachEnabled,
   onCoachToggle,
   onNext,
@@ -137,7 +139,7 @@ export function RepResultScreen({
           <p className="recording-discarded-note">Recording discarded.</p>
         )}
 
-        <FinalStripChart buffer={result.stripBuffer} />
+        <FinalStripChart buffer={result.stripBuffer} floorDb={floorDb} />
         <div className="result-message">{result.feedback.display}</div>
         <RepRating
           repNumber={result.repNumber}

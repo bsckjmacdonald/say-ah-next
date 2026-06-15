@@ -66,6 +66,37 @@ export const DB_SPL_CALIBRATION_OFFSET = 90;
 export const DB_SPL_DISPLAY_FLOOR = 30;
 
 // ============================================================================
+// dB SPL TARGET ZONES (clinician-driven, adaptive)
+// ============================================================================
+// The meter and strip chart render in calibrated dB SPL — NOT in RMS fractions.
+// The old RMS thresholds put the "too loud" line at ~70 dB and capped the chart
+// at ~72 dB, so any healthy 75–85 dB voice was wrongly flagged "too loud" (the
+// #1 clinician complaint). These dB values fix that.
+//
+// The green band is personalized:
+//   - FLOOR = the patient's baseline, set by the clinician during /setup and
+//     ratcheted up as they improve (see lib/storage baseline + useSession).
+//     TARGET_FLOOR_DEFAULT_DB is only the fallback when /setup hasn't run.
+//   - CEILING is an interim absolute value. An amplitude ceiling can't tell
+//     healthy-loud from hyperfunction — the F0 fast-follow will refine this.
+//     Until then keep it permissive so healthy 80–85 dB voices stay in green.
+export const METER_AXIS_MIN_DB = 50; // bottom of the visible meter/chart
+export const METER_AXIS_MAX_DB = 95; // top of the visible meter/chart
+export const TARGET_FLOOR_DEFAULT_DB = 65; // fallback green floor (clinician's "starts at 65" example)
+export const TARGET_CEILING_DB = 85; // interim green ceiling (above = "ease back")
+export const TARGET_HEALTHY_DB = 78; // healthy sustained reference, for messaging
+
+// Auto-ratchet: the green floor nudges UP as the patient improves, mirroring
+// what the clinician does by hand ("once you pull them up this low end shifts
+// up"). Conservative + always reinforcing — it only ever rises, requires
+// several consecutive comfortable reps, and is capped so the green band never
+// collapses. A clinician can reset it in /setup.
+export const FLOOR_RATCHET_MARGIN_DB = 5; // rep must clear floor by this to count
+export const FLOOR_RATCHET_AFTER_REPS = 3; // consecutive clears before a nudge
+export const FLOOR_RATCHET_STEP_DB = 2; // size of each upward nudge
+export const FLOOR_RATCHET_MAX_DB = TARGET_HEALTHY_DB; // floor never exceeds this
+
+// ============================================================================
 // REAL-TIME IN-FLIGHT COACH
 // ============================================================================
 // Short verbal cues delivered DURING phonation, mimicking what expert LSVT

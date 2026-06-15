@@ -39,6 +39,8 @@ interface Props {
   /** Tip from the previous rep — fades out after 5 s. */
   tip: string | null;
   analyser: UseAudioAnalyser;
+  /** Adaptive green-zone floor (dB SPL) for the meter, chart, and cues. */
+  floorDb: number;
   onRepComplete: (completion: RepCompletion) => void;
 }
 
@@ -46,8 +48,15 @@ export function ExerciseScreen({
   currentRep,
   tip,
   analyser,
+  floorDb,
   onRepComplete,
 }: Props) {
+  // Read the latest floor inside the per-frame analyser callbacks without
+  // re-subscribing the loop (it can ratchet up mid-session).
+  const floorDbRef = useRef(floorDb);
+  useEffect(() => {
+    floorDbRef.current = floorDb;
+  }, [floorDb]);
   const meterRef = useRef<AudioMeterHandle>(null);
   const durationRef = useRef<DurationDisplayHandle>(null);
   const stripRef = useRef<LiveStripChartHandle>(null);
@@ -106,6 +115,7 @@ export function ExerciseScreen({
               latestRmsRef.current,
               realtimeStateRef.current,
               performance.now(),
+              floorDbRef.current,
             );
             if (phrase) {
               setCoachCue(phrase);
@@ -189,8 +199,8 @@ export function ExerciseScreen({
       <HardwareLimitedBanner status={analyser.constraintStatus} />
       <DurationDisplay ref={durationRef} />
       <div className="meter-chart-row">
-        <AudioMeter ref={meterRef} />
-        <LiveStripChart ref={stripRef} />
+        <AudioMeter ref={meterRef} floorDb={floorDb} />
+        <LiveStripChart ref={stripRef} floorDb={floorDb} />
       </div>
       <button
         ref={stopBtnRef}

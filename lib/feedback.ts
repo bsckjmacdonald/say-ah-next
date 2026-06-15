@@ -9,12 +9,12 @@
 // ============================================================================
 
 import {
-  METER_LOUD_THRESHOLD,
-  METER_SOFT_THRESHOLD,
   STRAIN_DURATION_PERCENT,
   STRAIN_THRESHOLD,
+  TARGET_CEILING_DB,
   TARGET_DURATION_SECONDS,
 } from "./constants";
+import { rmsToDbSpl } from "./audio";
 import { formatSeconds } from "./format";
 import type {
   FeedbackCategory,
@@ -99,9 +99,15 @@ export function determineFeedbackCategory(
   highAmplitudeTime: number,
   allLoudness: number[],
   personalBest: number,
+  floorDb: number,
 ): { category: FeedbackCategory; newPersonalBest: number } {
-  const isTooSoft = avgRMS < METER_SOFT_THRESHOLD;
-  const isTooLoud = avgRMS >= METER_LOUD_THRESHOLD;
+  // Zone decision is in calibrated dB SPL: below the (adaptive) green floor is
+  // too soft; at/above the interim ceiling is too loud. This is the fix for the
+  // "healthy voice flagged too loud" complaint and the personal-best bug (a
+  // misclassified-loud rep could never set a PB).
+  const avgDb = rmsToDbSpl(avgRMS);
+  const isTooSoft = avgDb < floorDb;
+  const isTooLoud = avgDb >= TARGET_CEILING_DB;
 
   // Too loud / straining — ease up (highest priority override)
   if (isTooLoud || detectStrain(peakRMS, highAmplitudeTime, duration * 1000)) {
@@ -177,7 +183,9 @@ export function generateFeedback(
     allLoudness.length >= 1 ? allLoudness[allLoudness.length - 1] : null;
   const loudImproved = prevLoud !== null && avgRMS > prevLoud * 1.10;
   const loudDropped = prevLoud !== null && avgRMS < prevLoud * 0.85;
-  const timesTooLoud = allLoudness.filter((l) => l >= METER_LOUD_THRESHOLD).length;
+  const timesTooLoud = allLoudness.filter(
+    (l) => rmsToDbSpl(l) >= TARGET_CEILING_DB,
+  ).length;
 
   let spoken = "";
   let display = "";

@@ -9,15 +9,17 @@
 // ============================================================================
 
 import { useCallback, useEffect, useState } from "react";
-import { TOTAL_REPS } from "@/lib/constants";
+import { TOTAL_REPS, DB_SPL_CALIBRATION_OFFSET } from "@/lib/constants";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useSession, type RepResult } from "@/hooks/useSession";
 import { primeVoices } from "@/lib/tts";
 import { coachVoice } from "@/lib/coachVoice";
+import { setActiveCalibrationOffset } from "@/lib/audio";
 import {
   loadCoachEnabled,
   saveCoachEnabled,
   loadCoachVoice,
+  loadDeviceOffset,
 } from "@/lib/storage";
 import { ConstraintDiagnostic } from "@/components/ConstraintDiagnostic";
 import { WelcomeScreen } from "@/components/screens/WelcomeScreen";
@@ -36,8 +38,18 @@ export default function Page() {
   const [summaryMessage, setSummaryMessage] = useState("");
   const [coachEnabled, setCoachEnabled] = useState(true);
 
-  const session = useSession(TOTAL_REPS);
   const analyser = useAudioAnalyser({ coachEnabled });
+  const session = useSession(TOTAL_REPS, analyser.deviceId);
+
+  // Apply the per-device calibration offset once the mic deviceId resolves, so
+  // every dB SPL conversion (meter, zones, coach) uses the calibrated value.
+  useEffect(() => {
+    if (analyser.deviceId) {
+      setActiveCalibrationOffset(
+        loadDeviceOffset(analyser.deviceId, DB_SPL_CALIBRATION_OFFSET),
+      );
+    }
+  }, [analyser.deviceId]);
 
   // Hydrate persisted settings from localStorage after mount. Reading
   // localStorage during render would hydrate-mismatch under SSR, so this
@@ -158,6 +170,7 @@ export default function Page() {
           currentRep={session.currentRep}
           tip={session.nextRepTip}
           analyser={analyser}
+          floorDb={session.floorDb}
           onRepComplete={handleRepComplete}
         />
       )}
@@ -165,6 +178,7 @@ export default function Page() {
         <RepResultScreen
           result={repResult}
           durations={session.durations}
+          floorDb={session.floorDb}
           coachEnabled={coachEnabled}
           onCoachToggle={handleCoachToggle}
           onNext={handleNextRep}
