@@ -100,7 +100,7 @@ export default function Page() {
       // time fall back to Web Speech so feedback is never delayed several
       // seconds (the dynamic text can't be pre-cached).
       if (result.feedback.spoken)
-        void coachVoice.speak(result.feedback.spoken, { maxWaitMs: 2000 });
+        void coachVoice.speak(result.feedback.spoken, { maxWaitMs: 6000 });
       setScreen("rep-result");
     },
     [session],
@@ -116,7 +116,7 @@ export default function Page() {
     coachVoice.cancel();
     const msg = session.finishSession();
     setSummaryMessage(msg);
-    void coachVoice.speak(msg, { maxWaitMs: 2000 });
+    void coachVoice.speak(msg, { maxWaitMs: 6000 });
     setScreen("session-complete");
   }, [session]);
 

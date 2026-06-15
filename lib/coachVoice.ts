@@ -202,6 +202,7 @@ class CoachVoiceService {
     key: string,
     text: string,
     speed: number,
+    priority: "high" | "low" = "high",
   ): Promise<AudioBuffer | null> {
     const existing = this.inFlight.get(key);
     if (existing) return existing;
@@ -217,6 +218,7 @@ class CoachVoiceService {
         text,
         voice: this.voice,
         speed,
+        priority,
       });
     }).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, p);
@@ -234,7 +236,8 @@ class CoachVoiceService {
     for (const text of phrases) {
       const key = `${this.voice}|${speed}|${text}`;
       if (this.cache.has(key)) continue;
-      await this.synth(key, text, speed);
+      // Low priority so live cues / post-rep messages always synth first.
+      await this.synth(key, text, speed, "low");
     }
   }
 

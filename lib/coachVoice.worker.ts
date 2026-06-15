@@ -59,40 +59,70 @@ interface InMessage {
   text?: string;
   voice?: string;
   speed?: number;
+  priority?: "high" | "low";
 }
 
-ctx.onmessage = async (e) => {
+interface Job {
+  id: number;
+  text: string;
+  voice?: string;
+  speed?: number;
+}
+
+// Two queues so live speech (cues, post-rep messages) always jumps ahead of
+// background pre-warming. Jobs run one at a time — onnxruntime is single
+// threaded, and serializing avoids concurrent-session issues.
+const highQueue: Job[] = [];
+const lowQueue: Job[] = [];
+let running = false;
+
+async function pump(): Promise<void> {
+  if (running) return;
+  const job = highQueue.shift() ?? lowQueue.shift();
+  if (!job) return;
+  running = true;
+  try {
+    const model = await load();
+    const result = await model.generate(job.text, {
+      voice: job.voice,
+      speed: job.speed,
+    });
+    const audio = new Float32Array(result.audio);
+    ctx.postMessage(
+      {
+        type: "audio",
+        id: job.id,
+        audio,
+        samplingRate: result.sampling_rate ?? 24000,
+      },
+      [audio.buffer],
+    );
+  } catch (err) {
+    ctx.postMessage({ type: "genError", id: job.id, message: String(err) });
+  }
+  running = false;
+  void pump();
+}
+
+ctx.onmessage = (e) => {
   const msg = e.data as InMessage;
 
   if (msg.type === "load") {
-    try {
-      await load();
-      ctx.postMessage({ type: "loaded" });
-    } catch (err) {
-      ctx.postMessage({ type: "loadError", message: String(err) });
-    }
+    load().then(
+      () => ctx.postMessage({ type: "loaded" }),
+      (err) => ctx.postMessage({ type: "loadError", message: String(err) }),
+    );
     return;
   }
 
-  if (msg.type === "generate") {
-    try {
-      const model = await load();
-      const result = await model.generate(msg.text ?? "", {
-        voice: msg.voice,
-        speed: msg.speed,
-      });
-      const audio = new Float32Array(result.audio);
-      ctx.postMessage(
-        {
-          type: "audio",
-          id: msg.id,
-          audio,
-          samplingRate: result.sampling_rate ?? 24000,
-        },
-        [audio.buffer],
-      );
-    } catch (err) {
-      ctx.postMessage({ type: "genError", id: msg.id, message: String(err) });
-    }
+  if (msg.type === "generate" && msg.id != null) {
+    const job: Job = {
+      id: msg.id,
+      text: msg.text ?? "",
+      voice: msg.voice,
+      speed: msg.speed,
+    };
+    (msg.priority === "low" ? lowQueue : highQueue).push(job);
+    void pump();
   }
 };
