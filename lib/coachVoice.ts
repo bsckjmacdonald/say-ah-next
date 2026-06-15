@@ -1,24 +1,23 @@
 "use client";
 
 // ============================================================================
-// SAY AH — COACH VOICE (Kokoro neural TTS)
+// SAY AH — COACH VOICE (Kokoro neural TTS, off-main-thread)
 //
-// Replaces the browser Web Speech coach with Kokoro-82M (kokoro-js, Apache 2.0)
-// running in-browser via ONNX Runtime (wasm). Clinician feedback on the old
-// browser TTS: "robotic", "rushed", "jarring". This module addresses all three:
+// Drives lib/coachVoice.worker.ts, which hosts Kokoro in a Web Worker so
+// synthesis never blocks the UI thread (it was freezing the tab for tens of
+// seconds on the main thread). Strategy for a never-laggy experience:
 //
-//   - Warm neural voice (default af_heart — grade A in the blind listening test;
-//     see ~/Documents/Claude/LSVT/projects/lsvt_voice_test/WRITEUP.md). The
-//     clinician picks the voice during /setup from a graded shortlist.
-//   - "Rushed" fix: synthesize at speed 1.0 (natural). The old code pushed the
-//     Web Speech `rate` up to sound energetic, which read as rushed.
-//   - "Clipped/jarring" fix: short cue phrases are PRE-SYNTHESIZED and cached so
-//     they play instantly from an AudioBuffer instead of being cut off by
-//     `speechSynthesis.cancel()` mid-word (the old failure mode).
+//   - Short cue phrases are pre-synthesized (in the worker) on the pre-rep
+//     screen and cached as AudioBuffers, so during a rep they play instantly.
+//   - speak() plays a cached buffer immediately; if not cached it falls back to
+//     Web Speech right away (no waiting), and the worker fills the cache in the
+//     background for next time. A caller can opt to wait briefly (maxWaitMs)
+//     for Kokoro — used for post-rep messages, which can't be pre-cached.
+//   - If the worker or Kokoro can't load at all, everything degrades to Web
+//     Speech so the coach is never silent.
 //
-// Falls back to Web Speech (lib/tts.ts) when Kokoro is unavailable or still
-// loading, so the coach is never silent. The ~82 MB model is cached by the
-// browser after first load; pre-warm it during the countdown.
+// Default voice af_heart (grade A in the blind test). Speed 1.0 (natural) —
+// the old Web Speech path pushed rate up, which clinicians called "rushed".
 // ============================================================================
 
 import { speakMessage, cancelSpeech } from "./tts";
@@ -27,9 +26,6 @@ export type CoachVoiceId = "af_heart" | "af_bella" | "bf_emma" | "am_michael";
 
 export const DEFAULT_COACH_VOICE: CoachVoiceId = "af_heart";
 
-// Curated shortlist for the /setup voice picker — the four voices from the blind
-// listening test, ordered by grade. The clinician chooses from these, not all
-// 54 Kokoro voices.
 export const COACH_VOICES: { id: CoachVoiceId; label: string }[] = [
   { id: "af_heart", label: "Heart — warm female (A)" },
   { id: "af_bella", label: "Bella — energetic female (A−)" },
@@ -37,34 +33,57 @@ export const COACH_VOICES: { id: CoachVoiceId; label: string }[] = [
   { id: "am_michael", label: "Michael — calm male (C+)" },
 ];
 
-const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
-
-// Minimal structural type for the kokoro-js instance — avoids depending on the
-// library's transitive @huggingface/transformers types. Matches the working
-// usage in app/tts-test/page.tsx.
-interface KokoroInstance {
-  generate(
-    text: string,
-    opts?: { voice?: string; speed?: number },
-  ): Promise<{ audio: Float32Array | ArrayLike<number>; sampling_rate?: number }>;
-}
-
 export interface CoachVoiceProgress {
   status: string;
   name?: string;
   progress?: number;
 }
 
+interface AudioMsg {
+  type: "audio";
+  id: number;
+  audio: Float32Array<ArrayBuffer>;
+  samplingRate: number;
+}
+interface ProgressMsg {
+  type: "progress";
+  info: CoachVoiceProgress;
+}
+interface LoadedMsg {
+  type: "loaded";
+}
+interface LoadErrorMsg {
+  type: "loadError";
+  message: string;
+}
+interface GenErrorMsg {
+  type: "genError";
+  id: number;
+  message: string;
+}
+type WorkerMsg = AudioMsg | ProgressMsg | LoadedMsg | LoadErrorMsg | GenErrorMsg;
+
 class CoachVoiceService {
-  private tts: KokoroInstance | null = null;
+  private worker: Worker | null = null;
+  private workerFailed = false;
+  private loaded = false;
   private loadPromise: Promise<void> | null = null;
-  private kokoroFailed = false;
+  private loadResolve: (() => void) | null = null;
+  private onProgress: ((info: CoachVoiceProgress) => void) | null = null;
+
   private ctx: AudioContext | null = null;
   private current: AudioBufferSourceNode | null = null;
   private voice: CoachVoiceId = DEFAULT_COACH_VOICE;
-  // Cache key is `${voice}|${speed}|${text}` so a voice or speed change does not
-  // serve stale audio.
   private cache = new Map<string, AudioBuffer>();
+
+  // Pending generate requests, keyed by message id.
+  private nextId = 1;
+  private pending = new Map<
+    number,
+    { key: string; resolve: (b: AudioBuffer | null) => void }
+  >();
+  // De-dupe concurrent synths of the same phrase.
+  private inFlight = new Map<string, Promise<AudioBuffer | null>>();
 
   setVoice(voice: CoachVoiceId): void {
     this.voice = voice;
@@ -75,7 +94,7 @@ class CoachVoiceService {
   }
 
   isKokoroReady(): boolean {
-    return this.tts !== null;
+    return this.loaded;
   }
 
   private getCtx(): AudioContext | null {
@@ -87,80 +106,151 @@ class CoachVoiceService {
           .webkitAudioContext;
       this.ctx = new AudioCtx();
     }
-    // Autoplay policy can suspend the context; resume so playback isn't silent
-    // (same class of bug as the WS3 capture fix).
     if (this.ctx.state === "suspended") void this.ctx.resume();
     return this.ctx;
   }
 
-  /**
-   * Load the Kokoro model. Idempotent and safe to call repeatedly — concurrent
-   * callers share one load. On failure, falls back to Web Speech permanently
-   * (no repeated download attempts within the session).
-   */
-  load(onProgress?: (info: CoachVoiceProgress) => void): Promise<void> {
-    if (this.tts || this.kokoroFailed) return Promise.resolve();
-    if (!this.loadPromise) {
-      this.loadPromise = (async () => {
-        try {
-          const { KokoroTTS } = await import("kokoro-js");
-          this.tts = (await KokoroTTS.from_pretrained(MODEL_ID, {
-            dtype: "q8",
-            device: "wasm",
-            progress_callback: onProgress,
-          })) as unknown as KokoroInstance;
-        } catch (err) {
-          console.warn("Kokoro load failed; using Web Speech fallback:", err);
-          this.kokoroFailed = true;
-        }
-      })();
+  private getWorker(): Worker | null {
+    if (this.workerFailed) return null;
+    if (this.worker) return this.worker;
+    if (typeof window === "undefined" || typeof Worker === "undefined") {
+      return null;
     }
-    return this.loadPromise;
-  }
-
-  private async synth(
-    text: string,
-    speed: number,
-  ): Promise<AudioBuffer | null> {
-    const ctx = this.getCtx();
-    if (!this.tts || !ctx) return null;
     try {
-      const result = await this.tts.generate(text, { voice: this.voice, speed });
-      const samples = new Float32Array(result.audio);
-      const rate = result.sampling_rate ?? 24000;
-      const buf = ctx.createBuffer(1, samples.length, rate);
-      buf.copyToChannel(samples, 0);
-      return buf;
+      this.worker = new Worker(
+        new URL("./coachVoice.worker.ts", import.meta.url),
+        { type: "module" },
+      );
+      this.worker.onmessage = (e: MessageEvent<WorkerMsg>) =>
+        this.handleMessage(e.data);
+      this.worker.onerror = () => this.failWorker();
+      return this.worker;
     } catch (err) {
-      console.warn("Kokoro synth failed:", err);
+      console.warn("Coach voice worker unavailable; using Web Speech:", err);
+      this.workerFailed = true;
       return null;
     }
   }
 
+  private failWorker(): void {
+    this.workerFailed = true;
+    this.loaded = false;
+    // Resolve any waiters so callers fall back to Web Speech.
+    this.pending.forEach(({ resolve }) => resolve(null));
+    this.pending.clear();
+    this.loadResolve?.();
+    this.loadResolve = null;
+  }
+
+  private handleMessage(msg: WorkerMsg): void {
+    switch (msg.type) {
+      case "progress":
+        this.onProgress?.(msg.info);
+        break;
+      case "loaded":
+        this.loaded = true;
+        this.loadResolve?.();
+        this.loadResolve = null;
+        break;
+      case "loadError":
+        console.warn("Kokoro load failed; using Web Speech:", msg.message);
+        this.failWorker();
+        break;
+      case "audio": {
+        const entry = this.pending.get(msg.id);
+        if (!entry) break;
+        this.pending.delete(msg.id);
+        const ctx = this.getCtx();
+        if (!ctx) {
+          entry.resolve(null);
+          break;
+        }
+        const buf = ctx.createBuffer(1, msg.audio.length, msg.samplingRate);
+        buf.copyToChannel(msg.audio, 0);
+        this.cache.set(entry.key, buf);
+        entry.resolve(buf);
+        break;
+      }
+      case "genError": {
+        const entry = this.pending.get(msg.id);
+        if (entry) {
+          this.pending.delete(msg.id);
+          entry.resolve(null);
+        }
+        break;
+      }
+    }
+  }
+
+  /** Load the Kokoro model in the worker. Idempotent. */
+  load(onProgress?: (info: CoachVoiceProgress) => void): Promise<void> {
+    if (this.loaded || this.workerFailed) return Promise.resolve();
+    if (onProgress) this.onProgress = onProgress;
+    if (!this.loadPromise) {
+      const worker = this.getWorker();
+      if (!worker) return Promise.resolve();
+      this.loadPromise = new Promise((resolve) => {
+        this.loadResolve = resolve;
+        worker.postMessage({ type: "load" });
+      });
+    }
+    return this.loadPromise;
+  }
+
+  /** Synthesize one phrase in the worker (de-duped, cached). */
+  private synth(
+    key: string,
+    text: string,
+    speed: number,
+  ): Promise<AudioBuffer | null> {
+    const existing = this.inFlight.get(key);
+    if (existing) return existing;
+    const worker = this.getWorker();
+    if (!worker) return Promise.resolve(null);
+
+    const id = this.nextId++;
+    const p = new Promise<AudioBuffer | null>((resolve) => {
+      this.pending.set(id, { key, resolve });
+      worker.postMessage({
+        type: "generate",
+        id,
+        text,
+        voice: this.voice,
+        speed,
+      });
+    }).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, p);
+    return p;
+  }
+
   /**
-   * Pre-synthesize and cache a set of fixed phrases (the real-time cue pool) so
-   * they play with zero latency during a rep. Loads the model first if needed.
-   * No-op (resolves) if Kokoro is unavailable — callers just get Web Speech.
+   * Pre-synthesize and cache phrases in the worker (off the main thread). Safe
+   * to call repeatedly — cached phrases are skipped. No-op if Kokoro is
+   * unavailable. Runs sequentially so it doesn't flood the worker queue.
    */
   async prewarm(phrases: string[], speed = 1.0): Promise<void> {
     await this.load();
-    if (!this.tts) return;
+    if (!this.loaded) return;
     for (const text of phrases) {
       const key = `${this.voice}|${speed}|${text}`;
       if (this.cache.has(key)) continue;
-      const buf = await this.synth(text, speed);
-      if (buf) this.cache.set(key, buf);
+      await this.synth(key, text, speed);
     }
   }
 
   /**
-   * Speak a phrase. Prefers a cached pre-synthesized buffer (instant), then
-   * on-demand Kokoro synthesis, then Web Speech as a last resort so the coach
-   * is never silent. `speed` defaults to 1.0 (natural — do not rush cues).
+   * Speak a phrase. Plays a cached Kokoro buffer instantly; otherwise falls
+   * back to Web Speech immediately (and caches Kokoro in the background) unless
+   * `maxWaitMs` is given, in which case it waits up to that long for Kokoro
+   * before falling back. `speed` defaults to 1.0 (natural).
    */
-  async speak(text: string, opts?: { speed?: number }): Promise<void> {
+  async speak(
+    text: string,
+    opts?: { speed?: number; maxWaitMs?: number },
+  ): Promise<void> {
     if (!text) return;
     const speed = opts?.speed ?? 1.0;
+    const maxWaitMs = opts?.maxWaitMs ?? 0;
     const key = `${this.voice}|${speed}|${text}`;
 
     const cached = this.cache.get(key);
@@ -168,24 +258,31 @@ class CoachVoiceService {
       this.playBuffer(cached);
       return;
     }
-    if (this.tts) {
-      const buf = await this.synth(text, speed);
-      if (buf) {
-        this.cache.set(key, buf);
-        this.playBuffer(buf);
-        return;
+
+    if (!this.workerFailed && this.getWorker()) {
+      const synthP = this.synth(key, text, speed);
+      if (maxWaitMs > 0) {
+        const buf = await Promise.race([
+          synthP,
+          new Promise<null>((r) => setTimeout(() => r(null), maxWaitMs)),
+        ]);
+        if (buf) {
+          this.playBuffer(buf);
+          return;
+        }
+        // Timed out — fall through to Web Speech; synthP still caches for later.
+      } else {
+        // Don't wait — Web Speech now; the worker caches in the background.
+        void synthP;
       }
     }
-    // Fallback: Web Speech. Keep the old gentle prosody for naturalness.
+
     speakMessage(text);
   }
 
   private playBuffer(buf: AudioBuffer): void {
     const ctx = this.getCtx();
     if (!ctx) return;
-    // Stop any still-playing cue cleanly before starting the next. Cues are
-    // short and gated ~3 s apart, so this rarely fires — but it prevents two
-    // buffers overlapping without the mid-word chop that cancel() caused.
     try {
       this.current?.stop();
     } catch {
@@ -213,5 +310,5 @@ class CoachVoiceService {
   }
 }
 
-// Module-level singleton — one model load and cache shared across the app.
+// Module-level singleton — one worker, model load, and cache for the app.
 export const coachVoice = new CoachVoiceService();

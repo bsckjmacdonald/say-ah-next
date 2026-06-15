@@ -89,10 +89,12 @@ export default function Page() {
     (completion: RepCompletion) => {
       const result = session.completeRep(completion);
       setRepResult(result);
-      // Long-form encouragement via the Kokoro coach voice (on-demand synth;
-      // the model is already warm from the rep's cue pre-warming). Falls back
-      // to Web Speech if Kokoro isn't available.
-      if (result.feedback.spoken) void coachVoice.speak(result.feedback.spoken);
+      // Long-form encouragement via the Kokoro coach voice (synthesized in the
+      // worker, off the main thread). Wait briefly for it; if it's not ready in
+      // time fall back to Web Speech so feedback is never delayed several
+      // seconds (the dynamic text can't be pre-cached).
+      if (result.feedback.spoken)
+        void coachVoice.speak(result.feedback.spoken, { maxWaitMs: 2000 });
       setScreen("rep-result");
     },
     [session],
@@ -108,7 +110,7 @@ export default function Page() {
     coachVoice.cancel();
     const msg = session.finishSession();
     setSummaryMessage(msg);
-    void coachVoice.speak(msg);
+    void coachVoice.speak(msg, { maxWaitMs: 2000 });
     setScreen("session-complete");
   }, [session]);
 
