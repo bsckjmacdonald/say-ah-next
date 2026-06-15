@@ -354,7 +354,11 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
             disabled={model === "loading"}
             onClick={() => sample(v.id)}
           >
-            {playing === v.id ? "▶ Playing…" : "▶ Play"}
+            {model === "loading"
+              ? "Preparing voices…"
+              : playing === v.id
+                ? "▶ Playing…"
+                : "▶ Play"}
           </button>
           <span style={{ flex: 1 }}>{v.label}</span>
           <button
@@ -523,5 +527,10 @@ const s: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   error: { color: "#b91c1c", fontSize: 14, marginTop: 14 },
-  loadingNote: { fontSize: 14, color: "#2a7c7c", marginBottom: 12 },
+  loadingNote: {
+    fontSize: 20,
+    fontWeight: 700,
+    color: "#2a7c7c",
+    marginBottom: 16,
+  },
 };
