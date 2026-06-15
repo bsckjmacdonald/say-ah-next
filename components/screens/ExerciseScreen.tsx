@@ -132,12 +132,12 @@ export function ExerciseScreen({
                 setCoachCue(null);
                 coachCueTimerRef.current = null;
               }, COACH_CUE_HOLD_MS);
-              // Opt-in TTS via the Kokoro coach voice. Spoken at natural speed
-              // (1.0) — the old Web Speech path pushed rate/pitch up to sound
-              // energetic, which clinicians reported as rushed and jarring.
-              // Pre-warmed phrases play instantly from cache.
+              // Kokoro cue at natural speed (1.0). allowWebFallback:false means
+              // an un-cached cue stays silent (the on-screen text cue still
+              // shows) rather than blurting the robotic web voice over the rep
+              // or on top of a Kokoro cue. Pre-warmed phrases play from cache.
               if (speakCoachCuesRef.current) {
-                void coachVoice.speak(phrase);
+                void coachVoice.speak(phrase, { allowWebFallback: false });
               }
             }
           }

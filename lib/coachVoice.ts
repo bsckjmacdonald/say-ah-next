@@ -249,11 +249,15 @@ class CoachVoiceService {
    */
   async speak(
     text: string,
-    opts?: { speed?: number; maxWaitMs?: number },
+    opts?: { speed?: number; maxWaitMs?: number; allowWebFallback?: boolean },
   ): Promise<void> {
     if (!text) return;
     const speed = opts?.speed ?? 1.0;
     const maxWaitMs = opts?.maxWaitMs ?? 0;
+    // When false (in-rep cues), never use the Web Speech voice — play Kokoro if
+    // ready, otherwise stay silent (the on-screen text cue still shows). This
+    // avoids the robotic voice mixing with Kokoro mid-utterance.
+    const allowWeb = opts?.allowWebFallback ?? true;
     const key = `${this.voice}|${speed}|${text}`;
 
     const cached = this.cache.get(key);
@@ -275,17 +279,32 @@ class CoachVoiceService {
         }
         // Timed out — fall through to Web Speech; synthP still caches for later.
       } else {
-        // Don't wait — Web Speech now; the worker caches in the background.
+        // Don't wait — the worker caches in the background for next time.
         void synthP;
       }
     }
 
-    speakMessage(text);
+    if (allowWeb) {
+      this.stopBuffer();
+      speakMessage(text);
+    }
+  }
+
+  private stopBuffer(): void {
+    try {
+      this.current?.stop();
+    } catch {
+      /* already stopped */
+    }
+    this.current = null;
   }
 
   private playBuffer(buf: AudioBuffer): void {
     const ctx = this.getCtx();
     if (!ctx) return;
+    // Stop the other channel too, so Kokoro never overlaps a still-talking Web
+    // Speech utterance (the "two voices at once" bug).
+    cancelSpeech();
     try {
       this.current?.stop();
     } catch {
