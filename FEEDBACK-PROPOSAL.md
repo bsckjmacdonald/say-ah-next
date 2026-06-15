@@ -55,7 +55,7 @@ cut-off (#2), gap/restart detection (#8). **Exception:** the timer-overrun fix
 
 ---
 
-## WS1 — Calibration + adaptive, baseline-anchored dB-SPL zones  *(core, highest value)*
+## WS1 — Calibration + adaptive, baseline-anchored dB-SPL zones  ✅ BUILT (PR #7)
 
 **Addresses:** #1 (loudness wrong both directions), #13 (healthy high loudness
 penalized), #7 personal-best bug, #7 timer overrun.
@@ -122,7 +122,7 @@ hyperfunction ceiling is split out to a fast-follow PR (see below).
 
 ---
 
-## WS2 — Kokoro TTS  *(independent, parallelizable)*
+## WS2 — Kokoro TTS  ✅ BUILT (PR #7)
 
 **Addresses:** #5 (robotic / rushed / jarring coach voice), part of #3 (no audio
 on iOS Chrome).
@@ -220,12 +220,14 @@ duration-gated**:
 
 ## Suggested sequencing
 
-1. **WS3 (Windows)** — ✅ done (PR #6, branch `fix/windows-audio-capture`).
-2. **WS1 (calibration + adaptive dB-SPL zones)** — core clinical fix; design
-   resolved, ready to build.
-3. **WS2 (Kokoro)** — in parallel with WS1; independent code.
-4. **WS4 / WS5** — polish + clinical logic; design resolved, ready to build.
+1. **WS3 (Windows)** — ✅ done (PR #6).
+2. **WS1 (calibration + adaptive dB-SPL zones)** — ✅ built (PR #7, with /setup).
+3. **WS2 (Kokoro)** — ✅ built (PR #7).
+4. **WS4 / WS5** — polish + clinical logic; design resolved, not yet built.
 5. **Fast-follow (post-batch): F0 hyperfunction ceiling** — separate PR.
+
+PR #7 bundles WS3 + WS1 + WS2 (branch `feat/feedback-batch-2026-06`, based on
+the WS3 branch). Needs runtime QA (`session-check`) on real devices.
 
 Pre-merge: run the `session-check` QA checklist.
 
@@ -270,7 +272,7 @@ present in the batch branch before opening the batch PR.
    minimum duration; short loud reps count; unhealthy reps don't; default 15
    reps, adaptive. See WS5.
 
-**Still open:**
-4. **Calibration friction:** the *band* is clinician-preset, so the bottle-whistle
-   *mic* calibration is presumed clinician-run during setup too — confirm, and
-   decide the home re-calibration story (e.g. on `devicechange`).
+4. **Calibration friction:** ✅ Confirmed (2026-06) — mic calibration is
+   clinician-run during /setup; bottle-whistle optional, the clinician judges
+   loudness and sets the offset (built that way). Home re-calibration on
+   `devicechange` remains a later refinement.
