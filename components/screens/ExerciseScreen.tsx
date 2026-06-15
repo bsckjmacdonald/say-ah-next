@@ -24,7 +24,6 @@ import { ProgressBar } from "@/components/ProgressBar";
 import {
   evaluateRealtimeFeedback,
   freshRealtimeState,
-  ALL_RT_PHRASES,
 } from "@/lib/realtimeFeedback";
 import type { RealtimeFeedbackState } from "@/lib/realtimeFeedback";
 import {
@@ -86,12 +85,12 @@ export function ExerciseScreen({
   useEffect(() => {
     // Spoken cues require the coach toggle on AND a coaching level above
     // "minimal" (clinician setting from /setup; "minimal" = visual cue only).
-    const speak = loadCoachEnabled() && loadCoachingLevel() !== "minimal";
-    speakCoachCuesRef.current = speak;
-    // Use the clinician-selected voice and warm the cue cache so the first cue
-    // plays instantly (and from Kokoro, not the Web Speech fallback).
+    // Cues are pre-synthesized on the pre-rep screen (see PreRepScreen) so they
+    // play from cache here — synthesizing them on this screen would freeze the
+    // meter, since Kokoro runs on the main thread.
+    speakCoachCuesRef.current =
+      loadCoachEnabled() && loadCoachingLevel() !== "minimal";
     coachVoice.setVoice(loadCoachVoice());
-    if (speak) void coachVoice.prewarm(ALL_RT_PHRASES);
   }, []);
 
   // Start the analyser loop on mount, restart whenever the rep number changes.
