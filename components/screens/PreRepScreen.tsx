@@ -6,6 +6,7 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { CoachToggle } from "@/components/CoachToggle";
 import { coachVoice } from "@/lib/coachVoice";
 import { ALL_RT_PHRASES } from "@/lib/realtimeFeedback";
+import { ALL_POST_REP_SPOKEN } from "@/lib/feedback";
 import { loadCoachVoice, loadCoachingLevel } from "@/lib/storage";
 
 interface Props {
@@ -31,7 +32,8 @@ export function PreRepScreen({
   useEffect(() => {
     if (!coachEnabled || loadCoachingLevel() === "minimal") return;
     coachVoice.setVoice(loadCoachVoice());
-    void coachVoice.prewarm(ALL_RT_PHRASES);
+    // Cues first (needed during the rep), then the short post-rep phrases.
+    void coachVoice.prewarm([...ALL_RT_PHRASES, ...ALL_POST_REP_SPOKEN]);
   }, [coachEnabled]);
   return (
     <div className="screen pre-rep-screen">

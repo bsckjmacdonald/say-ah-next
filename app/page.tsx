@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TOTAL_REPS, DB_SPL_CALIBRATION_OFFSET } from "@/lib/constants";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useSession, type RepResult } from "@/hooks/useSession";
+import { POST_REP_SPOKEN, SESSION_COMPLETE_SPOKEN } from "@/lib/feedback";
 import { primeVoices } from "@/lib/tts";
 import { coachVoice } from "@/lib/coachVoice";
 import { setActiveCalibrationOffset } from "@/lib/audio";
@@ -95,12 +96,12 @@ export default function Page() {
     (completion: RepCompletion) => {
       const result = session.completeRep(completion);
       setRepResult(result);
-      // Long-form encouragement via the Kokoro coach voice (synthesized in the
-      // worker, off the main thread). Wait briefly for it; if it's not ready in
-      // time fall back to Web Speech so feedback is never delayed several
-      // seconds (the dynamic text can't be pre-cached).
-      if (result.feedback.spoken)
-        void coachVoice.speak(result.feedback.spoken, { maxWaitMs: 6000 });
+      // Spoken feedback uses a SHORT pre-cached phrase per category, so it plays
+      // instantly in the chosen Kokoro voice instead of timing out while the
+      // long dynamic sentence synthesizes. The detailed message stays on screen.
+      void coachVoice.speak(POST_REP_SPOKEN[result.category], {
+        maxWaitMs: 2500,
+      });
       setScreen("rep-result");
     },
     [session],
@@ -116,7 +117,9 @@ export default function Page() {
     coachVoice.cancel();
     const msg = session.finishSession();
     setSummaryMessage(msg);
-    void coachVoice.speak(msg, { maxWaitMs: 6000 });
+    // Spoken closing uses the pre-cached phrase (instant Kokoro); the detailed
+    // summary stays on screen.
+    void coachVoice.speak(SESSION_COMPLETE_SPOKEN, { maxWaitMs: 2500 });
     setScreen("session-complete");
   }, [session]);
 
