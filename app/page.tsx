@@ -95,13 +95,13 @@ export default function Page() {
     (completion: RepCompletion) => {
       const result = session.completeRep(completion);
       setRepResult(result);
-      // Speak the actual contextual feedback: try a fresh Kokoro synth first
-      // (responsive to this rep), and if it isn't ready quickly, play a varied
-      // non-recycling fallback in the chosen voice — never the robotic web
-      // voice. The detailed message also stays on screen.
-      if (result.feedback.spoken)
-        void coachVoice.speakContextual(result.feedback.spoken, {
-          maxWaitMs: 3000,
+      // Speak a SHORT personalized line (name + actual seconds) — it synthesizes
+      // fast enough to win the race and play in the chosen voice. If it still
+      // isn't ready, a varied in-voice fallback plays (never the web voice). The
+      // full detail stays on screen.
+      if (result.feedback.spokenShort)
+        void coachVoice.speakContextual(result.feedback.spokenShort, {
+          maxWaitMs: 4000,
         });
       setScreen("rep-result");
     },
@@ -118,8 +118,11 @@ export default function Page() {
     coachVoice.cancel();
     const msg = session.finishSession();
     setSummaryMessage(msg);
-    // Fresh closing if Kokoro is ready, else a varied in-voice fallback.
-    void coachVoice.speakContextual(msg, { maxWaitMs: 3000 });
+    // Short personalized closing (synthesizes quickly); full summary on screen.
+    const close = session.userName
+      ? `${session.userName}, great session — your voice is getting stronger!`
+      : "Great session — your voice is getting stronger!";
+    void coachVoice.speakContextual(close, { maxWaitMs: 4000 });
     setScreen("session-complete");
   }, [session]);
 

@@ -365,7 +365,39 @@ export function generateFeedback(
       break;
   }
 
-  return { spoken, display, tip };
+  // Short personalized one-liner for TTS (name + actual seconds). Kept brief so
+  // it synthesizes fast enough to actually play in the chosen voice; the longer
+  // `spoken`/`display` still carry the full message on screen.
+  const nm = name ? `, ${name}` : "";
+  const npre = name ? `${name}, ` : "";
+  let spokenShort: string;
+  switch (category) {
+    case "personal_best":
+      spokenShort = `${dShort} seconds — a new best${nm}!`;
+      break;
+    case "great":
+      spokenShort = `${dShort} seconds${nm} — excellent!`;
+      break;
+    case "good":
+      spokenShort = `${dShort} seconds — nice work${nm}.`;
+      break;
+    case "keep_trying":
+      spokenShort = `${dShort} seconds. Hold it a little longer next time.`;
+      break;
+    case "too_soft":
+      spokenShort = `${npre}let's find more volume next round.`;
+      break;
+    case "too_loud":
+      spokenShort = `${npre}great power — ease back just a touch.`;
+      break;
+    case "tiring":
+      spokenShort = `${npre}take a breath, then come back strong.`;
+      break;
+    default:
+      spokenShort = `${dShort} seconds — good work${nm}.`;
+  }
+
+  return { spoken, spokenShort, display, tip };
 }
 
 // Session-complete message (also dynamic)
