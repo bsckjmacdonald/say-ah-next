@@ -132,12 +132,11 @@ export function ExerciseScreen({
                 setCoachCue(null);
                 coachCueTimerRef.current = null;
               }, COACH_CUE_HOLD_MS);
-              // Kokoro cue at natural speed (1.0). allowWebFallback:false means
-              // an un-cached cue stays silent (the on-screen text cue still
-              // shows) rather than blurting the robotic web voice over the rep
-              // or on top of a Kokoro cue. Pre-warmed phrases play from cache.
+              // Cue plays from its pre-generated static file (always available,
+              // instant, in the chosen voice). Selection is still live, so it's
+              // responsive — just reliably audible now.
               if (speakCoachCuesRef.current) {
-                void coachVoice.speak(phrase, { allowWebFallback: false });
+                void coachVoice.speakCue(phrase);
               }
             }
           }

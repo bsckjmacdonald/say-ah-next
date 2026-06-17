@@ -1,28 +1,32 @@
 // ============================================================================
-// SAY AH — coach fallback audio generator (build-time, run in Node)
+// SAY AH — coach audio generator (build-time, run in Node)
 //
-// Pre-generates a batch of generic encouragement phrases in each shortlisted
-// Kokoro voice and writes them as static WAVs under public/coach/<voice>/, plus
-// a manifest. These are the RELIABLE, in-voice, non-recycling FALLBACK the app
-// plays at post-rep when a fresh contextual synth isn't ready in time — so it
-// never drops to the robotic browser voice, and never sounds canned (the app
-// still attempts fresh, contextual lines first; these only bridge the gap).
+// Pre-generates ALL fixed coach phrases in each shortlisted Kokoro voice and
+// writes them as static mp3s under public/coach/<voice>/, plus a manifest. The
+// app plays these directly (fetch + decode) — instant, reliable, identical on
+// laptop/phone/Safari, no model or worker needed for them:
 //
-// NOT all phrases are pre-generated — only this fallback batch. Run with:
-//   node scripts/generate-coach-audio.mjs
-// Re-run if the voice shortlist or fallback phrases change.
+//   - cues:     the in-rep cue pools (coachCues.json). Selection stays live
+//               (real-time loudness logic picks WHICH cue), so it's responsive,
+//               not canned. Played from a static file => always comes through.
+//   - fallback: inspiring, non-personalized post-rep lines, dealt non-recycling
+//               when a fresh contextual synth isn't ready.
+//
+// Run:  npm run gen:coach-audio   (re-run if voices/phrases change)
 // ============================================================================
 
 import { KokoroTTS } from "kokoro-js";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const VOICES = ["af_heart", "af_bella", "bf_emma", "am_michael"];
 
-// Inspiring, NON-personalized LSVT-themed lines (loud/strong/practice/be-heard).
-// >16 so a full session (15 reps + complete) never recycles one. Broadly
-// encouraging so any one fits any rep — the rep-specific detail is on screen and
-// in the (attempted) fresh contextual line.
+const CUE_POOLS = JSON.parse(readFileSync("lib/coachCues.json", "utf8"));
+const CUE_PHRASES = Object.values(CUE_POOLS).flat();
+
+// Inspiring, NON-personalized LSVT-themed post-rep lines. >16 so a full session
+// never recycles one. Broadly encouraging so any one fits any rep.
 const FALLBACK_PHRASES = [
   "Every rep makes your voice a little stronger.",
   "That's the power of practice — keep it going.",
@@ -54,12 +58,12 @@ function floatToWav(float32, sampleRate) {
   buf.write("WAVE", 8);
   buf.write("fmt ", 12);
   buf.writeUInt32LE(16, 16);
-  buf.writeUInt16LE(1, 20); // PCM
-  buf.writeUInt16LE(1, 22); // mono
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(1, 22);
   buf.writeUInt32LE(sampleRate, 24);
-  buf.writeUInt32LE(sampleRate * 2, 28); // byte rate
-  buf.writeUInt16LE(2, 32); // block align
-  buf.writeUInt16LE(16, 34); // bits/sample
+  buf.writeUInt32LE(sampleRate * 2, 28);
+  buf.writeUInt16LE(2, 32);
+  buf.writeUInt16LE(16, 34);
   buf.write("data", 36);
   buf.writeUInt32LE(n * 2, 40);
   let o = 44;
@@ -76,24 +80,40 @@ const tts = await KokoroTTS.from_pretrained(MODEL_ID, {
   device: "cpu",
 });
 
+async function renderMp3(text, voice, outPath) {
+  const r = await tts.generate(text, { voice });
+  const wavPath = outPath.replace(/\.mp3$/, ".tmp.wav");
+  writeFileSync(wavPath, floatToWav(r.audio, r.sampling_rate ?? 24000));
+  execFileSync(
+    "ffmpeg",
+    ["-y", "-i", wavPath, "-ac", "1", "-b:a", "64k", outPath],
+    { stdio: "ignore" },
+  );
+  rmSync(wavPath);
+}
+
+rmSync("public/coach", { recursive: true, force: true });
+
 const manifest = {};
 for (const voice of VOICES) {
-  mkdirSync(`public/coach/${voice}`, { recursive: true });
-  manifest[voice] = [];
-  for (let i = 0; i < FALLBACK_PHRASES.length; i++) {
-    const r = await tts.generate(FALLBACK_PHRASES[i], { voice });
-    const file = `fb-${String(i).padStart(2, "0")}.wav`;
-    writeFileSync(
-      `public/coach/${voice}/${file}`,
-      floatToWav(r.audio, r.sampling_rate ?? 24000),
-    );
-    manifest[voice].push(`/coach/${voice}/${file}`);
-    process.stdout.write(`  ${voice} ${i + 1}/${FALLBACK_PHRASES.length}\r`);
+  const dir = `public/coach/${voice}`;
+  mkdirSync(dir, { recursive: true });
+  const cues = {};
+  for (let i = 0; i < CUE_PHRASES.length; i++) {
+    const file = `cue-${String(i).padStart(2, "0")}.mp3`;
+    await renderMp3(CUE_PHRASES[i], voice, `${dir}/${file}`);
+    cues[CUE_PHRASES[i]] = `/coach/${voice}/${file}`;
   }
-  console.log(`\n${voice}: ${FALLBACK_PHRASES.length} files`);
+  const fallback = [];
+  for (let i = 0; i < FALLBACK_PHRASES.length; i++) {
+    const file = `fb-${String(i).padStart(2, "0")}.mp3`;
+    await renderMp3(FALLBACK_PHRASES[i], voice, `${dir}/${file}`);
+    fallback.push(`/coach/${voice}/${file}`);
+  }
+  manifest[voice] = { cues, fallback };
+  console.log(
+    `${voice}: ${CUE_PHRASES.length} cues + ${FALLBACK_PHRASES.length} fallback`,
+  );
 }
-writeFileSync(
-  "public/coach/fallback-manifest.json",
-  JSON.stringify(manifest, null, 2),
-);
-console.log("Done. Manifest: public/coach/fallback-manifest.json");
+writeFileSync("public/coach/manifest.json", JSON.stringify(manifest, null, 2));
+console.log("Done. Manifest: public/coach/manifest.json");

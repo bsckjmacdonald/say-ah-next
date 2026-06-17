@@ -5,7 +5,6 @@ import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
 import { CoachToggle } from "@/components/CoachToggle";
 import { coachVoice } from "@/lib/coachVoice";
-import { ALL_RT_PHRASES } from "@/lib/realtimeFeedback";
 import { loadCoachVoice, loadCoachingLevel } from "@/lib/storage";
 
 interface Props {
@@ -23,18 +22,13 @@ export function PreRepScreen({
   onCoachToggle,
   onStart,
 }: Props) {
-  // Pre-synthesize the coach cue pool here, on this static "get ready" screen,
-  // so the rep itself plays them from cache. Kokoro runs on the main thread, so
-  // doing this during the rep would freeze the meter. The model is already
-  // loaded (from /setup); after the first round these are all cached, so this
-  // is a no-op on later rounds.
+  // Warm the static coach audio (cues + post-rep fallback) for the chosen voice
+  // so it's fetched/decoded before the rep needs it. These are small static
+  // files — no model or synthesis involved, so cues reliably come through.
   useEffect(() => {
     if (!coachEnabled || loadCoachingLevel() === "minimal") return;
     coachVoice.setVoice(loadCoachVoice());
-    // Warm the in-rep cues (fresh Kokoro) and the static post-rep fallback
-    // (decoded WAVs) so both are ready when the rep runs / ends.
-    void coachVoice.prewarm(ALL_RT_PHRASES);
-    void coachVoice.prefetchFallbacks();
+    void coachVoice.prefetchStatic();
   }, [coachEnabled]);
   return (
     <div className="screen pre-rep-screen">

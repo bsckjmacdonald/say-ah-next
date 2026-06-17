@@ -94,12 +94,16 @@ class CoachVoiceService {
   // De-dupe concurrent synths of the same phrase.
   private inFlight = new Map<string, Promise<AudioBuffer | null>>();
 
-  // Static fallback batch (pre-generated WAVs, see scripts/generate-coach-audio
-  // and public/coach/). voice -> [url]. Played in the chosen voice, dealt
-  // without repeating within a session, when a fresh synth isn't ready.
-  private fallbackManifest: Record<string, string[]> | null = null;
-  private fallbackManifestPromise: Promise<void> | null = null;
-  private fallbackBufs = new Map<string, AudioBuffer>(); // url -> buffer
+  // Static pre-generated audio (see scripts/generate-coach-audio + public/coach/
+  // manifest.json). Per voice: cues (text -> url, played instantly so in-rep
+  // cues always come through) and a fallback batch (urls, dealt non-recycling
+  // for post-rep). All in the chosen voice; no model needed.
+  private manifest: Record<
+    string,
+    { cues: Record<string, string>; fallback: string[] }
+  > | null = null;
+  private manifestPromise: Promise<void> | null = null;
+  private staticBufs = new Map<string, AudioBuffer>(); // url -> buffer
   private fallbackDeck = new Map<string, number[]>(); // voice -> remaining indices
 
   setVoice(voice: CoachVoiceId): void {
@@ -364,25 +368,29 @@ class CoachVoiceService {
     this.current = src;
   }
 
-  // ── Static fallback batch ────────────────────────────────────────────────
+  // ── Static pre-generated audio ───────────────────────────────────────────
 
-  private loadFallbackManifest(): Promise<void> {
-    if (this.fallbackManifest) return Promise.resolve();
-    if (!this.fallbackManifestPromise) {
-      this.fallbackManifestPromise = fetch("/coach/fallback-manifest.json")
+  private loadManifest(): Promise<void> {
+    if (this.manifest) return Promise.resolve();
+    if (!this.manifestPromise) {
+      this.manifestPromise = fetch("/coach/manifest.json")
         .then((r) => (r.ok ? r.json() : null))
         .then((m) => {
-          this.fallbackManifest = m;
+          this.manifest = m;
         })
         .catch(() => {
-          /* no manifest → fallback simply unavailable */
+          /* no manifest → static audio simply unavailable */
         });
     }
-    return this.fallbackManifestPromise;
+    return this.manifestPromise;
   }
 
-  private async fetchFallbackBuffer(url: string): Promise<AudioBuffer | null> {
-    const cached = this.fallbackBufs.get(url);
+  private voiceEntry() {
+    return this.manifest?.[this.voice] ?? this.manifest?.[DEFAULT_COACH_VOICE];
+  }
+
+  private async fetchStaticBuffer(url: string): Promise<AudioBuffer | null> {
+    const cached = this.staticBufs.get(url);
     if (cached) return cached;
     const ctx = this.getCtx();
     if (!ctx) return null;
@@ -390,7 +398,7 @@ class CoachVoiceService {
       const resp = await fetch(url);
       if (!resp.ok) return null;
       const buf = await ctx.decodeAudioData(await resp.arrayBuffer());
-      this.fallbackBufs.set(url, buf);
+      this.staticBufs.set(url, buf);
       return buf;
     } catch {
       return null;
@@ -400,9 +408,7 @@ class CoachVoiceService {
   /** Next fallback URL for the current voice, dealt without repeating until the
    * deck is exhausted (then reshuffled). */
   private nextFallbackUrl(): string | null {
-    const urls =
-      this.fallbackManifest?.[this.voice] ??
-      this.fallbackManifest?.[DEFAULT_COACH_VOICE];
+    const urls = this.voiceEntry()?.fallback;
     if (!urls || urls.length === 0) return null;
     let deck = this.fallbackDeck.get(this.voice);
     if (!deck || deck.length === 0) {
@@ -417,22 +423,43 @@ class CoachVoiceService {
     return idx === undefined ? null : urls[idx];
   }
 
-  /** Warm the fallback buffers for the current voice in the background, so the
-   * first fallback plays without a fetch/decode hitch. */
-  async prefetchFallbacks(): Promise<void> {
-    await this.loadFallbackManifest();
-    const urls = this.fallbackManifest?.[this.voice];
-    if (!urls) return;
-    for (const url of urls) await this.fetchFallbackBuffer(url);
+  /** Warm the static buffers (cues + fallback) for the current voice so the
+   * first plays without a fetch/decode hitch. Runs in the background. */
+  async prefetchStatic(): Promise<void> {
+    await this.loadManifest();
+    const entry = this.voiceEntry();
+    if (!entry) return;
+    const urls = [...Object.values(entry.cues), ...entry.fallback];
+    for (const url of urls) await this.fetchStaticBuffer(url);
+  }
+
+  /**
+   * Play an in-rep cue from its static file (always available, instant, in
+   * voice). Falls back to a freshly-synthesized buffer if cached, else stays
+   * SILENT (the on-screen text cue still shows) — never the web voice.
+   */
+  async speakCue(text: string): Promise<void> {
+    if (!text) return;
+    await this.loadManifest();
+    const url = this.voiceEntry()?.cues?.[text];
+    if (url) {
+      const buf = await this.fetchStaticBuffer(url);
+      if (buf) {
+        this.playBuffer(buf);
+        return;
+      }
+    }
+    const cached = this.cache.get(`${this.voice}|1|${text}`);
+    if (cached) this.playBuffer(cached);
   }
 
   /** Play one non-recycling fallback phrase in the chosen voice. Returns false
    * if no fallback audio is available. */
   async playFallback(): Promise<boolean> {
-    await this.loadFallbackManifest();
+    await this.loadManifest();
     const url = this.nextFallbackUrl();
     if (!url) return false;
-    const buf = await this.fetchFallbackBuffer(url);
+    const buf = await this.fetchStaticBuffer(url);
     if (!buf) return false;
     this.playBuffer(buf);
     return true;

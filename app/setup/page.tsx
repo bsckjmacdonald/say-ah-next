@@ -323,11 +323,10 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
   const accept = useCallback(() => {
     coachVoice.setVoice(selected);
     saveCoachVoice(selected);
-    // Warm the static post-rep fallback (decoded WAVs) for the chosen voice now;
-    // the cache persists across the in-app navigation, so the first round's
-    // post-rep already has an in-voice fallback ready. In-rep cues are warmed in
-    // the main app's pre-rep screen.
-    void coachVoice.prefetchFallbacks();
+    // Warm the static coach audio (cues + fallback) for the chosen voice now;
+    // the cache persists across the in-app navigation, so round 1 already has
+    // its cues and post-rep audio ready.
+    void coachVoice.prefetchStatic();
     onDone();
   }, [selected, onDone]);
 

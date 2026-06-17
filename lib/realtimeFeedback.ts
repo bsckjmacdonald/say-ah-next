@@ -29,63 +29,14 @@ import {
 } from "./constants";
 import { pickUnused } from "./feedback";
 import type { FeedbackHistory } from "./types";
+import cuePools from "./coachCues.json";
 
 // Phrase pools, categorised exactly as the LSVT real-time feedback doc
-// recommends. Always positive — no criticism phrases anywhere in this file.
-const PHRASES: Record<string, string[]> = {
-  // Kept SHORT (1–3 words) on purpose — these play OVER the patient's phonation,
-  // so full sentences would distract (clinician feedback). Variety comes from
-  // large pools, not length.
-  early_good: [
-    "Good!",
-    "Yes!",
-    "Nice start!",
-    "That's it!",
-    "Beautiful!",
-    "There it is!",
-    "Lovely!",
-    "Strong start!",
-    "Oh, nice!",
-  ],
-  mid_sustain: [
-    "Keep going!",
-    "You've got this!",
-    "Stay strong!",
-    "Keep it up!",
-    "Hold it!",
-    "That's the one!",
-    "Steady and strong!",
-    "Beautiful — stay with it!",
-    "Yes, keep it!",
-  ],
-  push_harder: [
-    "Push!",
-    "Louder!",
-    "More effort!",
-    "Give it more!",
-    "Bigger!",
-    "Fill the room!",
-    "Open up!",
-    "Let it out!",
-    "Reach for it!",
-  ],
-  prevent_fade: [
-    "Don't let it drop!",
-    "Stay loud!",
-    "Don't fade!",
-    "Hold that volume!",
-    "Keep it up there!",
-    "Stay big!",
-  ],
-  near_end: [
-    "Almost there!",
-    "Just a bit more!",
-    "Strong finish!",
-    "Finish strong!",
-    "Hold it to the end!",
-    "Big finish!",
-  ],
-};
+// recommends. Always positive — no criticism phrases. SHORT (1–3 words) because
+// they play OVER the patient's phonation; variety comes from large pools, not
+// length. Single source of truth in coachCues.json so the static-audio
+// generator (scripts/generate-coach-audio.mjs) and the app can't drift.
+const PHRASES: Record<string, string[]> = cuePools;
 
 // Flat list of every cue phrase, for pre-synthesizing the coach voice during
 // the countdown so cues play with zero latency during a rep.
