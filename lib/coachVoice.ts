@@ -33,6 +33,14 @@ export const COACH_VOICES: { id: CoachVoiceId; label: string }[] = [
   { id: "am_michael", label: "Michael — calm male (C+)" },
 ];
 
+// Energy boost applied to ALL coach audio at playback (Kokoro can't adjust
+// energy itself — it only exposes voice + speed). A presence shelf brightens
+// the timbre, a compressor adds punch/consistency, and make-up gain lifts
+// loudness. Tune these to taste. All Web Audio nodes — Safari-safe.
+const COACH_PRESENCE_HZ = 3000;
+const COACH_PRESENCE_DB = 3.5;
+const COACH_MAKEUP_GAIN = 1.4;
+
 export interface CoachVoiceProgress {
   status: string;
   name?: string;
@@ -72,6 +80,7 @@ class CoachVoiceService {
   private onProgress: ((info: CoachVoiceProgress) => void) | null = null;
 
   private ctx: AudioContext | null = null;
+  private outputNode: AudioNode | null = null;
   private current: AudioBufferSourceNode | null = null;
   private voice: CoachVoiceId = DEFAULT_COACH_VOICE;
   private cache = new Map<string, AudioBuffer>();
@@ -116,6 +125,33 @@ class CoachVoiceService {
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
     return this.ctx;
+  }
+
+  // Shared energy-boost chain: source → presence shelf → compressor → make-up
+  // gain → speakers. Built once per context; all playback routes through it.
+  private getOutputNode(ctx: AudioContext): AudioNode {
+    if (this.outputNode && this.outputNode.context === ctx) {
+      return this.outputNode;
+    }
+    const input = ctx.createGain();
+    const presence = ctx.createBiquadFilter();
+    presence.type = "highshelf";
+    presence.frequency.value = COACH_PRESENCE_HZ;
+    presence.gain.value = COACH_PRESENCE_DB;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -22;
+    comp.knee.value = 24;
+    comp.ratio.value = 3.5;
+    comp.attack.value = 0.004;
+    comp.release.value = 0.22;
+    const makeup = ctx.createGain();
+    makeup.gain.value = COACH_MAKEUP_GAIN;
+    input.connect(presence);
+    presence.connect(comp);
+    comp.connect(makeup);
+    makeup.connect(ctx.destination);
+    this.outputNode = input;
+    return input;
   }
 
   private getWorker(): Worker | null {
@@ -320,7 +356,7 @@ class CoachVoiceService {
     }
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(this.getOutputNode(ctx));
     src.onended = () => {
       if (this.current === src) this.current = null;
     };
