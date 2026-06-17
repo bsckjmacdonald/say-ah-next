@@ -19,30 +19,31 @@ import { mkdirSync, writeFileSync } from "node:fs";
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const VOICES = ["af_heart", "af_bella", "bf_emma", "am_michael"];
 
-// Generic, warm, varied. >16 so a full session (15 reps + complete) never
-// recycles one. Kept positive and non-specific — the contextual specifics come
-// from the fresh synth and the on-screen text.
+// Inspiring, NON-personalized LSVT-themed lines (loud/strong/practice/be-heard).
+// >16 so a full session (15 reps + complete) never recycles one. Broadly
+// encouraging so any one fits any rep — the rep-specific detail is on screen and
+// in the (attempted) fresh contextual line.
 const FALLBACK_PHRASES = [
-  "Great effort!",
-  "Well done.",
-  "Nice work.",
-  "Keep it up!",
-  "That's the way.",
-  "Strong voice!",
-  "You're doing great.",
-  "Excellent.",
-  "Good job.",
-  "Keep going strong.",
-  "That's it.",
-  "Really nice.",
-  "Wonderful.",
-  "Great round.",
-  "You've got this.",
-  "Lovely work.",
-  "Strong and steady.",
-  "Terrific effort.",
-  "That's looking good.",
-  "Keep that energy up.",
+  "Every rep makes your voice a little stronger.",
+  "That's the power of practice — keep it going.",
+  "Your voice is a muscle, and you're building it.",
+  "Loud and proud — that's what we're working toward.",
+  "Speak up and be heard. You're doing the work.",
+  "Strong voice, strong presence.",
+  "All that effort adds up, round after round.",
+  "Your voice deserves to be heard — keep it big.",
+  "Big, bold, and confident — that's the goal.",
+  "Fill the room with your voice.",
+  "Powerful work. Your voice is waking up.",
+  "This is how we keep your voice strong for life.",
+  "Steady practice, stronger voice.",
+  "You showed up and put in the work — that matters.",
+  "Let your voice carry — there's so much in there.",
+  "Keep your voice alive and powerful.",
+  "Each round builds the habit of a bigger voice.",
+  "Your hard work is building a stronger voice.",
+  "Keep reaching for that big, clear voice.",
+  "Every strong breath counts. Well done.",
 ];
 
 function floatToWav(float32, sampleRate) {

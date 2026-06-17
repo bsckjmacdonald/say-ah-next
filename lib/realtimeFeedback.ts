@@ -33,16 +33,58 @@ import type { FeedbackHistory } from "./types";
 // Phrase pools, categorised exactly as the LSVT real-time feedback doc
 // recommends. Always positive — no criticism phrases anywhere in this file.
 const PHRASES: Record<string, string[]> = {
-  early_good: ["Good!", "Yes!", "Nice start!", "That's it!"],
+  // Kept SHORT (1–3 words) on purpose — these play OVER the patient's phonation,
+  // so full sentences would distract (clinician feedback). Variety comes from
+  // large pools, not length.
+  early_good: [
+    "Good!",
+    "Yes!",
+    "Nice start!",
+    "That's it!",
+    "Beautiful!",
+    "There it is!",
+    "Lovely!",
+    "Strong start!",
+    "Oh, nice!",
+  ],
   mid_sustain: [
     "Keep going!",
     "You've got this!",
     "Stay strong!",
     "Keep it up!",
+    "Hold it!",
+    "That's the one!",
+    "Steady and strong!",
+    "Beautiful — stay with it!",
+    "Yes, keep it!",
   ],
-  push_harder: ["Push!", "Louder!", "More effort!", "Give it more!"],
-  prevent_fade: ["Don't let it drop!", "Stay loud!", "Don't fade!"],
-  near_end: ["Almost there!", "Just a bit more!", "Strong finish!"],
+  push_harder: [
+    "Push!",
+    "Louder!",
+    "More effort!",
+    "Give it more!",
+    "Bigger!",
+    "Fill the room!",
+    "Open up!",
+    "Let it out!",
+    "Reach for it!",
+  ],
+  prevent_fade: [
+    "Don't let it drop!",
+    "Stay loud!",
+    "Don't fade!",
+    "Hold that volume!",
+    "Keep it up there!",
+    "Stay big!",
+  ],
+  near_end: [
+    "Almost there!",
+    "Just a bit more!",
+    "Strong finish!",
+    "Finish strong!",
+    "Hold it to the end!",
+    "Big finish!",
+  ],
 };
 
 // Flat list of every cue phrase, for pre-synthesizing the coach voice during
