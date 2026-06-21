@@ -169,8 +169,6 @@ export function useAudioAnalyser({
           (window as unknown as { webkitAudioContext: typeof AudioContext })
             .webkitAudioContext;
         audioContextRef.current = new AudioCtx();
-      } else if (audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume();
       }
 
       // iOS Safari: keep audio routed to the speaker (not earpiece) when the
@@ -186,15 +184,36 @@ export function useAudioAnalyser({
         // iOS-only API; no-op on other platforms.
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          autoGainControl: false,
-          echoCancellation: aec,
-          noiseSuppression: false,
-          channelCount: 1,
-          sampleRate: 48000,
-        },
-      });
+      // Ask for the ideal capture config first, then fall back if the browser
+      // rejects it. Some Windows/Chrome setups throw OverconstrainedError when
+      // an explicit sampleRate/channelCount is requested; retrying with just
+      // the processing toggles we depend on lets the device pick its native
+      // rate so capture still works. (A real permission denial — NotAllowedError
+      // — is re-thrown so it surfaces as "blocked", not retried.)
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            autoGainControl: false,
+            echoCancellation: aec,
+            noiseSuppression: false,
+            channelCount: 1,
+            sampleRate: 48000,
+          },
+        });
+      } catch (err) {
+        if ((err as DOMException)?.name === "OverconstrainedError") {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              autoGainControl: false,
+              echoCancellation: aec,
+              noiseSuppression: false,
+            },
+          });
+        } else {
+          throw err;
+        }
+      }
 
       mediaStreamRef.current = stream;
       streamAecRef.current = aec;
@@ -209,6 +228,17 @@ export function useAudioAnalyser({
         noiseSuppression: toStatus(settings.noiseSuppression),
       });
       setDeviceId(settings.deviceId ?? null);
+
+      // The browser's autoplay policy can leave the AudioContext "suspended"
+      // even when it was created inside a user gesture — common on
+      // Chrome/Windows. A suspended context outputs only silence, so the
+      // analyser never sees the voice and no rep is ever detected ("no data
+      // captured on my laptop"). Resume it now that the mic is open. This
+      // previously only ran when reusing an existing context, so the very
+      // first session on an affected device captured nothing.
+      if (audioContextRef.current.state !== "running") {
+        await audioContextRef.current.resume();
+      }
 
       const source =
         audioContextRef.current.createMediaStreamSource(stream);
