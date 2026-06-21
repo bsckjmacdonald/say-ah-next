@@ -25,6 +25,11 @@ const VOICES = ["af_heart", "af_bella", "bf_emma", "am_michael"];
 const CUE_POOLS = JSON.parse(readFileSync("lib/coachCues.json", "utf8"));
 const CUE_PHRASES = Object.values(CUE_POOLS).flat();
 
+// The single fixed phrase the /setup voice step previews in each voice. Static
+// (sample.mp3 per voice) so setup never has to download the model just to let a
+// clinician compare voices. This is the canonical definition of the phrase.
+const SAMPLE_PHRASE = "Great effort! Keep that volume up!";
+
 // Inspiring, NON-personalized LSVT-themed post-rep lines. >16 so a full session
 // never recycles one. Broadly encouraging so any one fits any rep.
 const FALLBACK_PHRASES = [
@@ -110,9 +115,11 @@ for (const voice of VOICES) {
     await renderMp3(FALLBACK_PHRASES[i], voice, `${dir}/${file}`);
     fallback.push(`/coach/${voice}/${file}`);
   }
-  manifest[voice] = { cues, fallback };
+  await renderMp3(SAMPLE_PHRASE, voice, `${dir}/sample.mp3`);
+  const sample = `/coach/${voice}/sample.mp3`;
+  manifest[voice] = { cues, fallback, sample };
   console.log(
-    `${voice}: ${CUE_PHRASES.length} cues + ${FALLBACK_PHRASES.length} fallback`,
+    `${voice}: ${CUE_PHRASES.length} cues + ${FALLBACK_PHRASES.length} fallback + 1 sample`,
   );
 }
 writeFileSync("public/coach/manifest.json", JSON.stringify(manifest, null, 2));

@@ -62,7 +62,8 @@
       "/coach/af_heart/fb-17.mp3",
       "/coach/af_heart/fb-18.mp3",
       "/coach/af_heart/fb-19.mp3"
-    ]
+    ],
+    "sample": "/coach/af_heart/sample.mp3"
   },
   "af_bella": {
     "cues": {
@@ -127,7 +128,8 @@
       "/coach/af_bella/fb-17.mp3",
       "/coach/af_bella/fb-18.mp3",
       "/coach/af_bella/fb-19.mp3"
-    ]
+    ],
+    "sample": "/coach/af_bella/sample.mp3"
   },
   "bf_emma": {
     "cues": {
@@ -192,7 +194,8 @@
       "/coach/bf_emma/fb-17.mp3",
       "/coach/bf_emma/fb-18.mp3",
       "/coach/bf_emma/fb-19.mp3"
-    ]
+    ],
+    "sample": "/coach/bf_emma/sample.mp3"
   },
   "am_michael": {
     "cues": {
@@ -257,6 +260,7 @@
       "/coach/am_michael/fb-17.mp3",
       "/coach/am_michael/fb-18.mp3",
       "/coach/am_michael/fb-19.mp3"
-    ]
+    ],
+    "sample": "/coach/am_michael/sample.mp3"
   }
 }
