@@ -264,46 +264,27 @@ function CalibrateStep({ onDone }: { onDone: () => void }) {
 }
 
 // ── Step 2: voice ─────────────────────────────────────────────────────────
-const SAMPLE_PHRASE = "Great effort! Keep that volume up!";
+// The preview phrase is pre-rendered per voice at build time; see SAMPLE_PHRASE
+// in scripts/generate-coach-audio.mjs.
 
 function VoiceStep({ onDone }: { onDone: () => void }) {
   const [selected, setSelected] = useState<CoachVoiceId>(DEFAULT_COACH_VOICE);
   const [playing, setPlaying] = useState<CoachVoiceId | null>(null);
-  const [model, setModel] = useState<"loading" | "ready" | "fallback">(
-    "loading",
-  );
-  const [progress, setProgress] = useState("Loading voice model (~82 MB)…");
+  const [ready, setReady] = useState(false);
 
-  // Get every voice fully ready before enabling Play: download the model, then
-  // pre-synthesize the sample for all four voices (in the worker). onnxruntime's
-  // first inference is slow (~tens of seconds), so doing this up front means
-  // each Play is instant and the clinician never waits after clicking.
+  // Previews are static pre-rendered clips (public/coach/<voice>/sample.mp3) —
+  // no model download needed just to compare voices. Prefetch the four small
+  // clips up front so each Play is instant.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await coachVoice.load((info) => {
-        if (cancelled) return;
-        if (info.status === "progress" && info.name && info.progress != null) {
-          setProgress(
-            `Downloading ${info.name.split("/").at(-1)} — ${Math.round(
-              info.progress,
-            )}%`,
-          );
-        }
-      });
-      if (cancelled) return;
-      if (!coachVoice.isKokoroReady()) {
-        setModel("fallback");
-        return;
-      }
-      setProgress("Preparing voices…");
       for (const v of COACH_VOICES) {
         if (cancelled) return;
         coachVoice.setVoice(v.id);
-        await coachVoice.prewarm([SAMPLE_PHRASE]);
+        await coachVoice.prefetchSample();
       }
       coachVoice.setVoice(DEFAULT_COACH_VOICE);
-      if (!cancelled) setModel("ready");
+      if (!cancelled) setReady(true);
     })();
     return () => {
       cancelled = true;
@@ -314,19 +295,19 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
     setSelected(id);
     setPlaying(id);
     coachVoice.setVoice(id);
-    // Samples are pre-cached above, so this plays instantly. The wait budget is
-    // just a safety net.
-    await coachVoice.speak(SAMPLE_PHRASE, { maxWaitMs: 15000 });
+    await coachVoice.speakSample();
     setPlaying(null);
   }, []);
 
   const accept = useCallback(() => {
     coachVoice.setVoice(selected);
     saveCoachVoice(selected);
-    // Warm the static coach audio (cues + fallback) for the chosen voice now;
-    // the cache persists across the in-app navigation, so round 1 already has
-    // its cues and post-rep audio ready.
+    // Warm the static coach audio (cues + fallback) for the chosen voice, and
+    // kick off the model download + first-inference warm-up in the background so
+    // the personalized post-rep line plays in this voice on the first rep. Both
+    // run off the critical path — the patient app never waits on them.
     void coachVoice.prefetchStatic();
+    coachVoice.warmModel();
     onDone();
   }, [selected, onDone]);
 
@@ -335,13 +316,7 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
       <p style={s.body}>
         Play each voice and pick the one your clinician chooses.
       </p>
-      {model === "loading" && <p style={s.loadingNote}>{progress}</p>}
-      {model === "fallback" && (
-        <p style={s.error}>
-          The neural voices couldn&apos;t load on this device, so the browser
-          voice is used — all options will sound the same. Pick one and continue.
-        </p>
-      )}
+      {!ready && <p style={s.loadingNote}>Loading voice samples…</p>}
       {COACH_VOICES.map((v) => (
         <div
           key={v.id}
@@ -353,16 +328,12 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
           <button
             style={{
               ...(playing === v.id ? s.btnPlayOn : s.btnPlay),
-              opacity: model === "loading" ? 0.5 : 1,
+              opacity: !ready ? 0.5 : 1,
             }}
-            disabled={model === "loading"}
+            disabled={!ready}
             onClick={() => sample(v.id)}
           >
-            {model === "loading"
-              ? "Preparing voices…"
-              : playing === v.id
-                ? "▶ Playing…"
-                : "▶ Play"}
+            {!ready ? "Loading…" : playing === v.id ? "▶ Playing…" : "▶ Play"}
           </button>
           <span style={{ flex: 1 }}>{v.label}</span>
           <button
