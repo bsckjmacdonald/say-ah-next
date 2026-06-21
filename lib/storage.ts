@@ -6,12 +6,13 @@
 // ============================================================================
 
 import {
+  CALIBRATION_KEY_PREFIX,
   COACH_STORAGE_KEY,
-  DEVICE_OFFSET_KEY_PREFIX,
   PB_KEY,
   SPEAK_COACH_CUES_KEY,
   STORAGE_KEY,
 } from "./constants";
+import { isBandValid, type TargetBand } from "./calibration";
 import type { SessionRecord } from "./types";
 
 const MAX_HISTORY = 30;
@@ -60,16 +61,28 @@ export function saveCoachEnabled(value: boolean): void {
   window.localStorage.setItem(COACH_STORAGE_KEY, String(value));
 }
 
-/** Returns the calibrated offset for this deviceId, or `fallback` if uncalibrated. */
-export function loadDeviceOffset(deviceId: string, fallback: number): number {
-  if (typeof window === "undefined") return fallback;
-  const raw = window.localStorage.getItem(DEVICE_OFFSET_KEY_PREFIX + deviceId);
-  return raw ? parseFloat(raw) : fallback;
+/**
+ * Returns the last calibrated target band for this deviceId, or null if none.
+ * Used as a per-session pre-fill the clinician confirms by ear or re-demos.
+ */
+export function loadBand(deviceId: string): TargetBand | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(CALIBRATION_KEY_PREFIX + deviceId);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as TargetBand;
+    return isBandValid(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
-export function saveDeviceOffset(deviceId: string, offset: number): void {
+export function saveBand(deviceId: string, band: TargetBand): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(DEVICE_OFFSET_KEY_PREFIX + deviceId, String(offset));
+  window.localStorage.setItem(
+    CALIBRATION_KEY_PREFIX + deviceId,
+    JSON.stringify(band),
+  );
 }
 
 export function saveSession(durations: number[]): void {

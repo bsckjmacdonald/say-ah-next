@@ -37,8 +37,28 @@ export const STRAIN_DURATION_PERCENT = 0.20; // fraction of rep at high level
 // Zones cover 15 % / 70 % / 15 % of CHART_MAX_LEVEL so the green target
 // band is easy to stay in — feedback indicated the prior 24/48/28 split
 // made the target band feel too narrow.
+//
+// These are the DEFAULT target band, used when no per-session calibration
+// exists (see lib/calibration.ts). A clinician can override the band per
+// session on the calibrate screen; everything that reads "the band" should
+// take a runtime TargetBand, not import these constants directly. They remain
+// here as the uncalibrated fallback so behaviour is unchanged when no band
+// has been set.
 export const METER_SOFT_THRESHOLD = 0.019; // below = "too soft"   → yellow (15 % of scale)
 export const METER_LOUD_THRESHOLD = 0.106; // above = "quite loud" → red/orange (85 % of scale)
+
+// When calibration sets soft/loud anchors, onset and offset are DERIVED from
+// them so the whole detection pipeline scales together with the band (a band
+// captured below a fixed onset would otherwise be unreachable on a quiet
+// device — the rep could never start). These fractions place onset/offset
+// within the soft→loud span; they're chosen to reproduce the default constants
+// above at the default anchors:
+//   onset  = soft + 0.64·(loud−soft) → 0.019 + 0.64·0.087 ≈ 0.075  (matches ONSET_THRESHOLD)
+//   offset = soft + 0.24·(loud−soft) → 0.019 + 0.24·0.087 ≈ 0.040  (matches OFFSET_THRESHOLD)
+// Tune on real devices; they're the single lever for the start/stop feel
+// relative to the calibrated band.
+export const ONSET_SPAN_FRACTION = 0.64;
+export const OFFSET_SPAN_FRACTION = 0.24;
 
 // Strip / result chart y-axis ceiling — levels above this are clipped to the
 // top edge. Zones fill the chart: soft 15 %, target 70 %, loud 15 %.
@@ -56,10 +76,11 @@ export const STRIP_MAX_POINTS = 30; // 30 × 1 s = 30 s max history (matches MAX
 // offset from the typical MEMS mic spec: 94 dB SPL ≈ −26 dBFS, so full-scale
 // (0 dBFS) ≈ 120 dB SPL.
 //
-// Real devices vary ±5–10 dB from this; calibration (Phase 4) is required for
-// any quantitative clinical claim. The per-device calibrated offset, once
-// measured, replaces this default — it is stored in localStorage keyed by
-// deviceId (see lib/storage.ts).
+// Real devices vary ±5–10 dB from this, so this number is display-only and not
+// a clinical measurement. We deliberately do NOT calibrate this offset per
+// device: the exercise is driven by the RMS target band (see lib/calibration.ts
+// and CONTEXT.md), which clinicians calibrate by ear per session. The dB
+// readout is a secondary, approximate cue layered on top of that band.
 export const DB_SPL_CALIBRATION_OFFSET = 90;
 
 // Below this dB level the readout shows "—" (effectively silent / no signal).
@@ -98,7 +119,10 @@ export const STORAGE_KEY = "sayah_sessions";
 export const PB_KEY = "sayah_personal_best";
 export const SPEAK_COACH_CUES_KEY = "sayah_speak_coach_cues";
 export const COACH_STORAGE_KEY = "sayah_coach_enabled";
-export const DEVICE_OFFSET_KEY_PREFIX = "sayah_offset_";
+// Per-device calibrated target band, keyed by deviceId. Replaces the never-read
+// dB-offset infra ("sayah_offset_") — we persist the band itself, not a dB
+// offset, because the band is what actually drives the exercise (see CONTEXT.md).
+export const CALIBRATION_KEY_PREFIX = "sayah_band_";
 
 // Zone colours — used by both the meter and the strip chart
 export const ZONE_COLORS = {

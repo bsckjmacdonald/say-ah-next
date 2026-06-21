@@ -9,11 +9,13 @@ import { cancelSpeech } from "@/lib/tts";
 import { RepRating } from "@/components/RepRating";
 import type { RepResult } from "@/hooks/useSession";
 import { CoachToggle } from "@/components/CoachToggle";
+import { DEFAULT_BAND, type TargetBand } from "@/lib/calibration";
 
 interface Props {
   result: RepResult;
   durations: number[];
   coachEnabled: boolean;
+  band?: TargetBand;
   onCoachToggle: (value: boolean) => void;
   onNext: () => void;
   onSeeResults: () => void;
@@ -24,6 +26,7 @@ export function RepResultScreen({
   result,
   durations,
   coachEnabled,
+  band = DEFAULT_BAND,
   onCoachToggle,
   onNext,
   onSeeResults,
@@ -137,7 +140,7 @@ export function RepResultScreen({
           <p className="recording-discarded-note">Recording discarded.</p>
         )}
 
-        <FinalStripChart buffer={result.stripBuffer} />
+        <FinalStripChart buffer={result.stripBuffer} band={band} />
         <div className="result-message">{result.feedback.display}</div>
         <RepRating
           repNumber={result.repNumber}

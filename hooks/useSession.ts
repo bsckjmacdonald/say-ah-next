@@ -23,6 +23,7 @@ import {
   saveSession,
   savePersonalBest,
 } from "@/lib/storage";
+import { DEFAULT_BAND, type TargetBand } from "@/lib/calibration";
 import type {
   FeedbackHistory,
   FeedbackResult,
@@ -50,6 +51,9 @@ export interface UseSession {
   history: SessionRecord[];
   /** Tip from the previous rep, shown briefly on the next exercise screen. */
   nextRepTip: string | null;
+  /** Active target band — DEFAULT_BAND until a clinician calibrates a session. */
+  band: TargetBand;
+  setBand: (band: TargetBand) => void;
   startSession: () => void;
   /** Process a finished rep, returning the feedback to display. */
   completeRep: (completion: RepCompletion) => RepResult;
@@ -69,6 +73,7 @@ export function useSession(totalReps: number): UseSession {
   const [personalBest, setPersonalBest] = useState(0);
   const [history, setHistory] = useState<SessionRecord[]>([]);
   const [nextRepTip, setNextRepTip] = useState<string | null>(null);
+  const [band, setBand] = useState<TargetBand>(DEFAULT_BAND);
 
   // Mutable cycling state for the deck-deal feedback picker
   const feedbackHistoryRef = useRef<FeedbackHistory>({});
@@ -117,6 +122,7 @@ export function useSession(totalReps: number): UseSession {
         highAmplitudeTime,
         prevLoudness,
         personalBest,
+        band,
       );
 
       if (newPersonalBest > personalBest) {
@@ -134,6 +140,7 @@ export function useSession(totalReps: number): UseSession {
           avgRMS,
           allLoudness: prevLoudness,
           category,
+          loudThreshold: band.loud,
         },
         feedbackHistoryRef.current,
       );
@@ -153,7 +160,7 @@ export function useSession(totalReps: number): UseSession {
         audioUrl,
       };
     },
-    [currentRep, durations, loudness, personalBest, totalReps, userName],
+    [band, currentRep, durations, loudness, personalBest, totalReps, userName],
   );
 
   const advanceRep = useCallback(() => {
@@ -186,6 +193,8 @@ export function useSession(totalReps: number): UseSession {
     personalBest,
     history,
     nextRepTip,
+    band,
+    setBand,
     startSession,
     completeRep,
     advanceRep,

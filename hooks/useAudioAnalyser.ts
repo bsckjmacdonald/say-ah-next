@@ -30,12 +30,11 @@ import { buildAWeightingCoefficients } from "@/lib/aWeighting";
 import {
   MAX_REP_DURATION_SECONDS,
   OFFSET_HOLD_MS,
-  OFFSET_THRESHOLD,
-  ONSET_THRESHOLD,
   STRAIN_THRESHOLD,
   STRIP_INTERVAL_MS,
   STRIP_MAX_POINTS,
 } from "@/lib/constants";
+import { DEFAULT_BAND, type TargetBand } from "@/lib/calibration";
 import type { AudioConstraintStatus, RepCompletion } from "@/lib/types";
 
 interface RepAccumulator {
@@ -96,6 +95,13 @@ export interface UseAudioAnalyser {
    * If not, silently restarts the listen loop.
    */
   stop: () => void;
+  /**
+   * Lightweight live-level loop for the calibrate screen: calls `onLevel` with
+   * the current RMS each frame, with no onset/offset/recording logic. Use
+   * `stopMonitor` to end it.
+   */
+  startMonitor: (onLevel: (rms: number) => void) => void;
+  stopMonitor: () => void;
   /** Whether the mic is currently granted. */
   isReady: () => boolean;
   /**
@@ -127,14 +133,22 @@ function toStatus(v: boolean | undefined): "off" | "on" | "unknown" {
 
 export function useAudioAnalyser({
   coachEnabled,
+  band = DEFAULT_BAND,
 }: {
   coachEnabled: boolean;
+  /** Active target band. onset/offset detection thresholds are read from it. */
+  band?: TargetBand;
 }): UseAudioAnalyser {
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const monitorFrameRef = useRef<number | null>(null);
+  // Always reflects the latest band prop, readable from the rAF loop (which is
+  // created once and would otherwise close over a stale band). Synced via
+  // effect so we never write a ref during render.
+  const bandRef = useRef<TargetBand>(band);
   const repRef = useRef<RepAccumulator>(freshAccumulator());
   const callbacksRef = useRef<AudioAnalyserCallbacks>({});
   const onCompleteRef = useRef<((r: RepCompletion) => void) | null>(null);
@@ -256,16 +270,27 @@ export function useAudioAnalyser({
   );
 
   // Sync coachEnabled ref and reinit the stream if the AEC state needs to
-  // change. This fires between renders so it's safe between reps.
+  // change. This fires between renders so it's safe between reps. Toggling the
+  // coach flips AEC, which shifts the RMS scale — so any existing calibration
+  // is now stale and we flag it for re-confirmation (same signal as a device
+  // change).
   useEffect(() => {
     coachEnabledRef.current = coachEnabled;
     if (
       mediaStreamRef.current !== null &&
       streamAecRef.current !== coachEnabled
     ) {
-      void closeAndReopenStream(coachEnabled);
+      void (async () => {
+        await closeAndReopenStream(coachEnabled);
+        setNeedsRecalibration(true);
+      })();
     }
   }, [coachEnabled, closeAndReopenStream]);
+
+  // Keep the rAF-readable band ref in sync with the latest prop.
+  useEffect(() => {
+    bandRef.current = band;
+  }, [band]);
 
   // Prompt re-calibration when the user plugs in or unplugs an audio device.
   useEffect(() => {
@@ -356,7 +381,7 @@ export function useAudioAnalyser({
       r.peakRMS = Math.max(r.peakRMS, rms);
       if (rms > STRAIN_THRESHOLD) r.highAmplitudeTime += 16;
 
-      if (!r.onsetDetected && rms > ONSET_THRESHOLD) {
+      if (!r.onsetDetected && rms > bandRef.current.onset) {
         r.onsetDetected = true;
         r.onsetTime = Date.now();
         r.offsetStartTime = null;
@@ -392,7 +417,7 @@ export function useAudioAnalyser({
       }
 
       if (r.onsetDetected && r.onsetTime !== null) {
-        if (rms < OFFSET_THRESHOLD) {
+        if (rms < bandRef.current.offset) {
           if (!r.offsetStartTime) r.offsetStartTime = Date.now();
         } else {
           r.offsetStartTime = null;
@@ -467,6 +492,33 @@ export function useAudioAnalyser({
     }
   }, [finishRep, runLoop, stopLoop]);
 
+  const stopMonitor = useCallback(() => {
+    if (monitorFrameRef.current !== null) {
+      cancelAnimationFrame(monitorFrameRef.current);
+      monitorFrameRef.current = null;
+    }
+  }, []);
+
+  const startMonitor = useCallback(
+    (onLevel: (rms: number) => void) => {
+      // Don't run alongside a rep loop; calibration and reps never overlap.
+      stopMonitor();
+      const loop = () => {
+        const analyser = analyserRef.current;
+        const data = dataArrayRef.current;
+        if (!analyser || !data) {
+          monitorFrameRef.current = requestAnimationFrame(loop);
+          return;
+        }
+        analyser.getFloatTimeDomainData(data);
+        onLevel(computeRMS(data));
+        monitorFrameRef.current = requestAnimationFrame(loop);
+      };
+      monitorFrameRef.current = requestAnimationFrame(loop);
+    },
+    [stopMonitor],
+  );
+
   const isReady = useCallback(() => mediaStreamRef.current !== null, []);
 
   const discardCurrentAudio = useCallback(() => {
@@ -484,6 +536,7 @@ export function useAudioAnalyser({
   useEffect(() => {
     return () => {
       stopLoop();
+      stopMonitor();
       if (recorderRef.current && recorderRef.current.state !== "inactive") {
         try {
           recorderRef.current.stop();
@@ -504,12 +557,14 @@ export function useAudioAnalyser({
       analyserRef.current = null;
       dataArrayRef.current = null;
     };
-  }, [stopLoop]);
+  }, [stopLoop, stopMonitor]);
 
   return {
     requestPermission,
     start,
     stop,
+    startMonitor,
+    stopMonitor,
     isReady,
     discardCurrentAudio,
     constraintStatus,

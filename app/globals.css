@@ -1597,3 +1597,104 @@ svg {
     border: 2px solid currentColor;
   }
 }
+
+/* ============================================================
+   CALIBRATION (clinician) screen
+   ============================================================ */
+.welcome-calibrate-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: clamp(13px, 2.1svh, 16px);
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 8px;
+  margin-top: var(--space-y-sm);
+  min-width: 0;
+  min-height: 0;
+  font-family: inherit;
+}
+.welcome-calibrate-link:hover {
+  color: var(--color-accent);
+}
+
+.calibrate-anchors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-y-sm);
+  width: 100%;
+  align-items: center;
+  margin-top: var(--space-y-sm);
+}
+
+/* Hold-to-capture buttons — wide tap targets, clear "armed" state. */
+.calibrate-hold {
+  width: 100%;
+  max-width: 360px;
+  touch-action: none; /* keep pointer events steady during a hold */
+  user-select: none;
+}
+.calibrate-hold.is-capturing {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(42, 124, 124, 0.25);
+}
+
+.calibrate-text-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 6px 8px;
+  min-width: 0;
+  min-height: 0;
+  font-family: inherit;
+}
+.calibrate-text-link:hover {
+  color: var(--color-accent);
+}
+
+.calibrate-hint {
+  font-size: 14px;
+  color: var(--color-text-muted, #666);
+  text-align: center;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.calibrate-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-y-sm);
+  align-items: center;
+  margin-top: var(--space-y-sm);
+}
+
+.calibrate-verdict {
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  max-width: 360px;
+}
+
+/* Re-calibration prompt shown on the pre-rep screen after the audio scale
+   changes (device or coach toggle). */
+.recalibrate-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(12px, 4svh, 32px);
+  transform: translateX(-50%);
+  width: min(92vw, 420px);
+  background: #fff;
+  border: 2px solid var(--color-accent);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 50;
+}
+.recalibrate-prompt p {
+  margin: 0 0 10px;
+  font-size: 15px;
+}

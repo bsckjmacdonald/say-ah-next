@@ -9,12 +9,11 @@
 // ============================================================================
 
 import {
-  METER_LOUD_THRESHOLD,
-  METER_SOFT_THRESHOLD,
   STRAIN_DURATION_PERCENT,
   STRAIN_THRESHOLD,
   TARGET_DURATION_SECONDS,
 } from "./constants";
+import type { TargetBand } from "./calibration";
 import { formatSeconds } from "./format";
 import type {
   FeedbackCategory,
@@ -99,9 +98,10 @@ export function determineFeedbackCategory(
   highAmplitudeTime: number,
   allLoudness: number[],
   personalBest: number,
+  band: TargetBand,
 ): { category: FeedbackCategory; newPersonalBest: number } {
-  const isTooSoft = avgRMS < METER_SOFT_THRESHOLD;
-  const isTooLoud = avgRMS >= METER_LOUD_THRESHOLD;
+  const isTooSoft = avgRMS < band.soft;
+  const isTooLoud = avgRMS >= band.loud;
 
   // Too loud / straining — ease up (highest priority override)
   if (isTooLoud || detectStrain(peakRMS, highAmplitudeTime, duration * 1000)) {
@@ -144,6 +144,7 @@ export function generateFeedback(
     avgRMS,
     allLoudness,
     category,
+    loudThreshold,
   } = params;
 
   // `d` is the formatted "12 seconds" string (whole number + pluralized
@@ -177,7 +178,7 @@ export function generateFeedback(
     allLoudness.length >= 1 ? allLoudness[allLoudness.length - 1] : null;
   const loudImproved = prevLoud !== null && avgRMS > prevLoud * 1.10;
   const loudDropped = prevLoud !== null && avgRMS < prevLoud * 0.85;
-  const timesTooLoud = allLoudness.filter((l) => l >= METER_LOUD_THRESHOLD).length;
+  const timesTooLoud = allLoudness.filter((l) => l >= loudThreshold).length;
 
   let spoken = "";
   let display = "";

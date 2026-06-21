@@ -13,6 +13,7 @@ export interface AudioConstraintStatus {
 
 export type ScreenId =
   | "welcome"
+  | "calibrate"
   | "mic-permission"
   | "pre-rep"
   | "exercise"
@@ -44,6 +45,8 @@ export interface FeedbackParams {
   avgRMS: number;
   allLoudness: number[];
   category: FeedbackCategory;
+  /** Top of the calibrated band (RMS) — counts how often the rep ran too loud. */
+  loudThreshold: number;
 }
 
 // Per-feedback-key cycling state for the deck-deal picker

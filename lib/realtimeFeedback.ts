@@ -21,7 +21,6 @@
 
 import { rmsToDbSpl } from "./audio";
 import {
-  METER_SOFT_THRESHOLD,
   RT_FEEDBACK_DROP_DB,
   RT_FEEDBACK_FIRST_CUE_MS,
   RT_FEEDBACK_INTERVAL_MS,
@@ -45,10 +44,6 @@ const PHRASES: Record<string, string[]> = {
   prevent_fade: ["Don't let it drop!", "Stay loud!", "Don't fade!"],
   near_end: ["Almost there!", "Just a bit more!", "Strong finish!"],
 };
-
-// "Below this dB is too soft" — derived once from the existing RMS threshold
-// so the realtime coach uses the same target zone the meter visualizes.
-const TARGET_LOW_DB = rmsToDbSpl(METER_SOFT_THRESHOLD);
 
 // Per-frame smoothing so single-frame spikes don't skew the decision logic.
 // At ~60 fps, alpha=0.1 gives a time constant of ~160 ms.
@@ -87,6 +82,7 @@ export function evaluateRealtimeFeedback(
   currentRms: number,
   state: RealtimeFeedbackState,
   nowMs: number,
+  softThreshold: number,
 ): string | null {
   // Update smoothed level and rolling peak. We do this every frame, even
   // when no cue will fire, so the next eligible cue has fresh data.
@@ -109,7 +105,9 @@ export function evaluateRealtimeFeedback(
   }
 
   // ── Category selection ────────────────────────────────────────────────
-  const tooSoft = dbNow < TARGET_LOW_DB;
+  // Compare in RMS directly against the calibrated soft anchor (equivalent to
+  // the old dB comparison since rmsToDbSpl is monotonic, but band-aware).
+  const tooSoft = state.smoothedRms < softThreshold;
   const dropped =
     state.cueCount > 0 && state.peakDb - dbNow >= RT_FEEDBACK_DROP_DB;
   const nearEnd = elapsedMs >= RT_FEEDBACK_NEAR_END_MS;

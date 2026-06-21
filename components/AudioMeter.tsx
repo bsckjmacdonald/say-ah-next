@@ -15,15 +15,13 @@
 // gives the patient an actionable cue without exposing the calibration caveat.
 // ============================================================================
 
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
   CHART_MAX_LEVEL,
   DB_SPL_DISPLAY_FLOOR,
-  METER_LOUD_THRESHOLD,
-  METER_SOFT_THRESHOLD,
-  ONSET_THRESHOLD,
   ZONE_COLORS,
 } from "@/lib/constants";
+import { DEFAULT_BAND, type TargetBand } from "@/lib/calibration";
 import { rmsToDbSpl } from "@/lib/audio";
 
 export interface AudioMeterHandle {
@@ -44,10 +42,6 @@ const PEAK_DECAY_PER_SEC = CHART_MAX_LEVEL * 0.5;
 // through at ~22 % of its peak; a sustained 500 ms hold passes at ~71 %.
 const PEAK_INPUT_SMOOTH_ALPHA = 0.04;
 
-// dB SPL value the patient needs to reach for the chart to start drawing.
-// Derived once from the same RMS threshold the analyser uses for onset.
-const ONSET_DB_SPL = rmsToDbSpl(ONSET_THRESHOLD);
-
 type LabelState =
   | { kind: "listening" }
   | { kind: "to_start"; gap: number }
@@ -59,10 +53,22 @@ function labelStateEqual(a: LabelState, b: LabelState): boolean {
   return true;
 }
 
-export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
-  _props,
-  ref,
-) {
+interface AudioMeterProps {
+  /** Active target band — drives zone colours and the "+N dB to start" gap. */
+  band?: TargetBand;
+}
+
+export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
+  function AudioMeter({ band = DEFAULT_BAND }, ref) {
+  // Latest band, readable from the imperative setLevel (which is created once
+  // with [] deps and would otherwise close over a stale band). Synced via
+  // effect so we never write a ref during render. Band changes only at
+  // calibration boundaries, so the post-commit timing is immaterial.
+  const bandRef = useRef<TargetBand>(band);
+  useEffect(() => {
+    bandRef.current = band;
+  }, [band]);
+
   const fillRef = useRef<HTMLDivElement>(null);
   const peakRef = useRef<HTMLDivElement>(null);
   const dbReadoutRef = useRef<HTMLDivElement>(null);
@@ -138,9 +144,9 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
         const scaled = Math.min(level, CHART_MAX_LEVEL) / CHART_MAX_LEVEL;
         fill.style.height = scaled * 100 + "%";
 
-        if (level < METER_SOFT_THRESHOLD) {
+        if (level < bandRef.current.soft) {
           fill.style.backgroundColor = ZONE_COLORS.soft;
-        } else if (level < METER_LOUD_THRESHOLD) {
+        } else if (level < bandRef.current.loud) {
           fill.style.backgroundColor = ZONE_COLORS.target;
         } else {
           fill.style.backgroundColor = ZONE_COLORS.loud;
@@ -199,7 +205,8 @@ export const AudioMeter = forwardRef<AudioMeterHandle>(function AudioMeter(
         } else if (!audibleEnough) {
           applyLabelState({ kind: "listening" });
         } else {
-          const gap = Math.max(1, Math.round(ONSET_DB_SPL - db));
+          const onsetDbSpl = rmsToDbSpl(bandRef.current.onset);
+          const gap = Math.max(1, Math.round(onsetDbSpl - db));
           applyLabelState({ kind: "to_start", gap });
         }
       },

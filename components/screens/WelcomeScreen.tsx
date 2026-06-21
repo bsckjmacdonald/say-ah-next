@@ -10,6 +10,7 @@ interface Props {
   onCoachToggle: (value: boolean) => void;
   onBegin: () => void;
   onShowHistory: () => void;
+  onCalibrate: () => void;
 }
 
 export function WelcomeScreen({
@@ -19,6 +20,7 @@ export function WelcomeScreen({
   onCoachToggle,
   onBegin,
   onShowHistory,
+  onCalibrate,
 }: Props) {
   return (
     <div className="screen welcome-screen">
@@ -96,6 +98,13 @@ export function WelcomeScreen({
             Let&apos;s Begin
           </button>
         </div>
+        <button
+          type="button"
+          className="welcome-calibrate-link"
+          onClick={onCalibrate}
+        >
+          Calibrate for this patient
+        </button>
       </div>
     </div>
   );

@@ -8,14 +8,20 @@
 // callbacks that update both the screen state and the relevant session state.
 // ============================================================================
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TOTAL_REPS } from "@/lib/constants";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useSession, type RepResult } from "@/hooks/useSession";
 import { primeVoices, speakMessage, cancelSpeech } from "@/lib/tts";
-import { loadCoachEnabled, saveCoachEnabled } from "@/lib/storage";
+import {
+  loadBand,
+  loadCoachEnabled,
+  saveBand,
+  saveCoachEnabled,
+} from "@/lib/storage";
 import { ConstraintDiagnostic } from "@/components/ConstraintDiagnostic";
 import { WelcomeScreen } from "@/components/screens/WelcomeScreen";
+import { CalibrateScreen } from "@/components/screens/CalibrateScreen";
 import { MicPermissionScreen } from "@/components/screens/MicPermissionScreen";
 import { PreRepScreen } from "@/components/screens/PreRepScreen";
 import { ExerciseScreen } from "@/components/screens/ExerciseScreen";
@@ -23,6 +29,7 @@ import { RepResultScreen } from "@/components/screens/RepResultScreen";
 import { SessionCompleteScreen } from "@/components/screens/SessionCompleteScreen";
 import { HistoryScreen } from "@/components/screens/HistoryScreen";
 import { FeedbackModal } from "@/components/FeedbackModal";
+import type { TargetBand } from "@/lib/calibration";
 import type { ScreenId, RepCompletion } from "@/lib/types";
 
 export default function Page() {
@@ -30,12 +37,21 @@ export default function Page() {
   const [repResult, setRepResult] = useState<RepResult | null>(null);
   const [summaryMessage, setSummaryMessage] = useState("");
   const [coachEnabled, setCoachEnabled] = useState(true);
+  // True once a clinician has committed a calibrated band this session — gates
+  // the "re-calibrate?" prompt that appears when the audio scale changes.
+  const [calibrated, setCalibrated] = useState(false);
 
   const session = useSession(TOTAL_REPS);
-  const analyser = useAudioAnalyser({ coachEnabled });
+  const analyser = useAudioAnalyser({ coachEnabled, band: session.band });
 
-  // Hydrate persisted settings from localStorage after mount.
+  // Band to restore if the clinician cancels out of calibration.
+  const prevBandRef = useRef<TargetBand>(session.band);
+
+  // Hydrate persisted settings from localStorage after mount. Reading
+  // localStorage during render would hydrate-mismatch under SSR, so this
+  // one-time setState in an effect is the intended pattern (see useSession).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCoachEnabled(loadCoachEnabled());
     primeVoices();
   }, []);
@@ -58,6 +74,33 @@ export default function Page() {
   const handleMicGranted = useCallback(() => {
     setScreen("pre-rep");
   }, []);
+
+  // ── Calibration ────────────────────────────────────────────────────────
+  const handleShowCalibrate = useCallback(() => {
+    prevBandRef.current = session.band;
+    // Pre-fill from the last band stored for this device, if any; the clinician
+    // confirms by ear or re-demos.
+    const prefill = analyser.deviceId ? loadBand(analyser.deviceId) : null;
+    if (prefill) session.setBand(prefill);
+    setScreen("calibrate");
+  }, [analyser.deviceId, session]);
+
+  const handleCalibrateCommit = useCallback(
+    (band: TargetBand) => {
+      if (analyser.deviceId) saveBand(analyser.deviceId, band);
+      session.setBand(band);
+      setCalibrated(true);
+      analyser.dismissRecalibration();
+      session.startSession();
+      setScreen(analyser.isReady() ? "pre-rep" : "mic-permission");
+    },
+    [analyser, session],
+  );
+
+  const handleCalibrateCancel = useCallback(() => {
+    session.setBand(prevBandRef.current);
+    setScreen("welcome");
+  }, [session]);
 
   const handleStartRep = useCallback(() => {
     setScreen("exercise");
@@ -127,6 +170,16 @@ export default function Page() {
           onCoachToggle={handleCoachToggle}
           onBegin={handleBegin}
           onShowHistory={handleShowHistory}
+          onCalibrate={handleShowCalibrate}
+        />
+      )}
+      {screen === "calibrate" && (
+        <CalibrateScreen
+          analyser={analyser}
+          band={session.band}
+          onBandChange={session.setBand}
+          onCommit={handleCalibrateCommit}
+          onCancel={handleCalibrateCancel}
         />
       )}
       {screen === "mic-permission" && (
@@ -149,6 +202,7 @@ export default function Page() {
           currentRep={session.currentRep}
           tip={session.nextRepTip}
           analyser={analyser}
+          band={session.band}
           onRepComplete={handleRepComplete}
         />
       )}
@@ -156,6 +210,7 @@ export default function Page() {
         <RepResultScreen
           result={repResult}
           durations={session.durations}
+          band={session.band}
           coachEnabled={coachEnabled}
           onCoachToggle={handleCoachToggle}
           onNext={handleNextRep}
@@ -177,6 +232,25 @@ export default function Page() {
           history={session.history}
           onBack={handleBackToWelcome}
         />
+      )}
+      {calibrated && analyser.needsRecalibration && screen === "pre-rep" && (
+        <div className="recalibrate-prompt" role="alert">
+          <p>
+            The microphone setup changed, so the saved volume range may no longer
+            match. Re-calibrate before continuing?
+          </p>
+          <div className="button-group">
+            <button className="btn-secondary" onClick={handleShowCalibrate}>
+              Re-calibrate
+            </button>
+            <button
+              className="calibrate-text-link"
+              onClick={analyser.dismissRecalibration}
+            >
+              Keep current range
+            </button>
+          </div>
+        </div>
       )}
       {(screen === "pre-rep" ||
         screen === "exercise" ||

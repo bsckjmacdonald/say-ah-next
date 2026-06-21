@@ -13,12 +13,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
   CHART_MAX_LEVEL,
-  METER_LOUD_THRESHOLD,
-  METER_SOFT_THRESHOLD,
-  ONSET_THRESHOLD,
   STRIP_INTERVAL_MS,
   STRIP_MAX_POINTS,
 } from "@/lib/constants";
+import { DEFAULT_BAND, type TargetBand } from "@/lib/calibration";
 
 // How many x-axis points (seconds) to show. Starts at 10 s, ratchets up in
 // 5 s increments once buffer grows beyond the current ceiling.
@@ -29,6 +27,8 @@ function computeVisiblePoints(n: number): number {
 interface RenderOpts {
   visiblePoints: number;
   timeLabels: boolean;
+  /** Active target band — positions the zone bands and the start line. */
+  band: TargetBand;
   /**
    * When true (live chart, pre-onset), draw a coaching overlay telling the
    * patient to get louder. The final/result chart leaves this off.
@@ -43,7 +43,7 @@ function renderLoudnessChart(
   buffer: number[],
   opts: RenderOpts,
 ) {
-  const { visiblePoints, timeLabels, showStartCue } = opts;
+  const { visiblePoints, timeLabels, showStartCue, band } = opts;
   // cH = full canvas height — time labels are drawn inset (no reserved strip).
   const cH = H;
 
@@ -52,8 +52,8 @@ function renderLoudnessChart(
   const scl = (lvl: number) =>
     Math.min(Math.max(lvl, 0), CHART_MAX_LEVEL) / CHART_MAX_LEVEL;
 
-  const softFrac = scl(METER_SOFT_THRESHOLD);
-  const loudFrac = scl(METER_LOUD_THRESHOLD);
+  const softFrac = scl(band.soft);
+  const loudFrac = scl(band.loud);
 
   // Zone background bands
   const bands = [
@@ -71,7 +71,7 @@ function renderLoudnessChart(
   ctx.setLineDash([4, 4]);
   ctx.strokeStyle = "rgba(0,0,0,0.22)";
   ctx.lineWidth = 1;
-  [METER_LOUD_THRESHOLD, METER_SOFT_THRESHOLD].forEach((lvl) => {
+  [band.loud, band.soft].forEach((lvl) => {
     const y = cH * (1 - scl(lvl));
     ctx.beginPath();
     ctx.moveTo(0, y);
@@ -126,7 +126,7 @@ function renderLoudnessChart(
   // their voice up to it. Both disappear once setOnsetDetected(true) flips
   // showStartCue off, so the rep itself stays visually uncluttered.
   if (showStartCue) {
-    const onsetY = cH * (1 - scl(ONSET_THRESHOLD));
+    const onsetY = cH * (1 - scl(band.onset));
 
     ctx.save();
     ctx.setLineDash([6, 4]);
@@ -169,8 +169,8 @@ function renderLoudnessChart(
   const xStep = W / visiblePoints;
   const lvlToY = (lvl: number) => cH * (1 - scl(lvl));
   const zoneClr = (lvl: number) => {
-    if (lvl < METER_SOFT_THRESHOLD) return "#a88a00";
-    if (lvl < METER_LOUD_THRESHOLD) return "#157031";
+    if (lvl < band.soft) return "#a88a00";
+    if (lvl < band.loud) return "#157031";
     return "#a8401e";
   };
 
@@ -237,11 +237,24 @@ export interface LiveStripChartHandle {
   reset: () => void;
 }
 
-export const LiveStripChart = forwardRef<LiveStripChartHandle>(
-  function LiveStripChart(_props, ref) {
+interface LiveStripChartProps {
+  /** Active target band — positions the zone bands and start line. */
+  band?: TargetBand;
+}
+
+export const LiveStripChart = forwardRef<
+  LiveStripChartHandle,
+  LiveStripChartProps
+>(function LiveStripChart({ band = DEFAULT_BAND }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const bufferRef = useRef<number[]>([]);
     const onsetDetectedRef = useRef(false);
+    // Latest band, readable from the imperative draw handle (created with []).
+    // Synced via effect so we never write a ref during render.
+    const bandRef = useRef<TargetBand>(band);
+    useEffect(() => {
+      bandRef.current = band;
+    }, [band]);
 
     const sizeAndDraw = (buffer: number[]) => {
       const canvas = canvasRef.current;
@@ -256,6 +269,7 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
         visiblePoints: computeVisiblePoints(buffer.length),
         timeLabels: true,
         showStartCue: !onsetDetectedRef.current,
+        band: bandRef.current,
       });
     };
 
@@ -279,10 +293,11 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
       [],
     );
 
-    // Initial render after mount so the empty zone bands appear
+    // Initial render after mount so the empty zone bands appear; also redraw
+    // when the band changes so a calibration preview updates live.
     useEffect(() => {
       sizeAndDraw(bufferRef.current);
-    }, []);
+    }, [band]);
 
     return (
       <div className="strip-chart-wrapper">
@@ -295,7 +310,13 @@ export const LiveStripChart = forwardRef<LiveStripChartHandle>(
 // ----------------------------------------------------------------------------
 // Final chart — drawn from the rep snapshot
 // ----------------------------------------------------------------------------
-export function FinalStripChart({ buffer }: { buffer: number[] }) {
+export function FinalStripChart({
+  buffer,
+  band = DEFAULT_BAND,
+}: {
+  buffer: number[];
+  band?: TargetBand;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -308,8 +329,9 @@ export function FinalStripChart({ buffer }: { buffer: number[] }) {
     renderLoudnessChart(ctx, canvas.width, canvas.height, buffer, {
       visiblePoints: computeVisiblePoints(buffer.length),
       timeLabels: true,
+      band,
     });
-  }, [buffer]);
+  }, [buffer, band]);
 
   return <canvas ref={canvasRef} className="result-strip-chart" />;
 }

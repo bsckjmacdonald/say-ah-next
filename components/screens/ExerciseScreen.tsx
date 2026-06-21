@@ -28,6 +28,7 @@ import {
 } from "@/lib/realtimeFeedback";
 import { loadCoachEnabled } from "@/lib/storage";
 import { speakMessage } from "@/lib/tts";
+import { type TargetBand } from "@/lib/calibration";
 import type { UseAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import type { RepCompletion } from "@/lib/types";
 
@@ -38,6 +39,7 @@ interface Props {
   /** Tip from the previous rep — fades out after 5 s. */
   tip: string | null;
   analyser: UseAudioAnalyser;
+  band: TargetBand;
   onRepComplete: (completion: RepCompletion) => void;
 }
 
@@ -45,8 +47,17 @@ export function ExerciseScreen({
   currentRep,
   tip,
   analyser,
+  band,
   onRepComplete,
 }: Props) {
+  // Latest band, readable from the per-frame analyser callbacks below (the
+  // start() effect only re-runs on rep change and would close over a stale
+  // band). Synced via effect so we never write a ref during render.
+  const bandRef = useRef<TargetBand>(band);
+  useEffect(() => {
+    bandRef.current = band;
+  }, [band]);
+
   const meterRef = useRef<AudioMeterHandle>(null);
   const durationRef = useRef<DurationDisplayHandle>(null);
   const stripRef = useRef<LiveStripChartHandle>(null);
@@ -101,6 +112,7 @@ export function ExerciseScreen({
               latestRmsRef.current,
               realtimeStateRef.current,
               performance.now(),
+              bandRef.current.soft,
             );
             if (phrase) {
               setCoachCue(phrase);
@@ -187,8 +199,8 @@ export function ExerciseScreen({
       <HardwareLimitedBanner status={analyser.constraintStatus} />
       <DurationDisplay ref={durationRef} />
       <div className="meter-chart-row">
-        <AudioMeter ref={meterRef} />
-        <LiveStripChart ref={stripRef} />
+        <AudioMeter ref={meterRef} band={band} />
+        <LiveStripChart ref={stripRef} band={band} />
       </div>
       <button
         ref={stopBtnRef}
