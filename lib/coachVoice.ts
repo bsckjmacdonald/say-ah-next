@@ -100,7 +100,7 @@ class CoachVoiceService {
   // for post-rep). All in the chosen voice; no model needed.
   private manifest: Record<
     string,
-    { cues: Record<string, string>; fallback: string[] }
+    { cues: Record<string, string>; fallback: string[]; sample?: string }
   > | null = null;
   private manifestPromise: Promise<void> | null = null;
   private staticBufs = new Map<string, AudioBuffer>(); // url -> buffer
@@ -290,6 +290,22 @@ class CoachVoiceService {
   }
 
   /**
+   * Kick off the model download and pay the slow first-inference cost in the
+   * background, off the critical path (never awaited). Call this once the chosen
+   * voice is known (end of setup) so that by the first rep the model is loaded
+   * and warm, and the personalized post-rep line plays in the chosen voice.
+   */
+  warmModel(): void {
+    void (async () => {
+      await this.load();
+      if (!this.loaded) return;
+      // One throwaway low-priority synth so onnxruntime's cold first inference
+      // happens now, not during the first post-rep message.
+      await this.prewarm(["Nice work!"]);
+    })();
+  }
+
+  /**
    * Speak a phrase. Plays a cached Kokoro buffer instantly; otherwise falls
    * back to Web Speech immediately (and caches Kokoro in the background) unless
    * `maxWaitMs` is given, in which case it waits up to that long for Kokoro
@@ -430,7 +446,26 @@ class CoachVoiceService {
     const entry = this.voiceEntry();
     if (!entry) return;
     const urls = [...Object.values(entry.cues), ...entry.fallback];
+    if (entry.sample) urls.push(entry.sample);
     for (const url of urls) await this.fetchStaticBuffer(url);
+  }
+
+  /** Warm just the setup preview clip for the current voice, so the first Play
+   * on the /setup voice step is instant (no fetch/decode hitch). */
+  async prefetchSample(): Promise<void> {
+    await this.loadManifest();
+    const url = this.voiceEntry()?.sample;
+    if (url) await this.fetchStaticBuffer(url);
+  }
+
+  /** Play the static setup preview clip for the current voice. Instant, in
+   * voice, no model needed. Stays SILENT if unavailable — never the web voice. */
+  async speakSample(): Promise<void> {
+    await this.loadManifest();
+    const url = this.voiceEntry()?.sample;
+    if (!url) return;
+    const buf = await this.fetchStaticBuffer(url);
+    if (buf) this.playBuffer(buf);
   }
 
   /**
