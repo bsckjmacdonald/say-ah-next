@@ -5,14 +5,13 @@
 //
 // Operates in calibrated dB SPL over a fixed visible axis (METER_AXIS_MIN_DB..
 // METER_AXIS_MAX_DB). The green band runs from the patient's adaptive floor
-// (prop) up to the interim ceiling. The old version scaled a linear RMS axis
-// whose "loud" line landed at ~70 dB, wrongly flagging healthy 75–85 dB voices
-// as too loud — this is the fix.
-//
-// All visual updates (bar height, colour, peak marker, dB readout) happen every
+// (prop) up to the interim ceiling. The bar/colour/peak/readout update every
 // animation frame via an imperative `setLevel(rms)` ref so a 60 fps React state
-// setter doesn't re-render the screen. The band (floorDb) arrives as a prop and
-// is read through a ref inside setLevel.
+// setter doesn't re-render the screen.
+//
+// A state label under the dB number ("Listening… / +N dB to start / Recording")
+// gives the patient an actionable pre-onset cue without exposing the dB SPL
+// calibration caveat.
 // ============================================================================
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
@@ -20,6 +19,7 @@ import {
   DB_SPL_DISPLAY_FLOOR,
   METER_AXIS_MAX_DB,
   METER_AXIS_MIN_DB,
+  ONSET_THRESHOLD,
   TARGET_CEILING_DB,
   ZONE_COLORS,
 } from "@/lib/constants";
@@ -27,6 +27,8 @@ import { rmsToDbSpl } from "@/lib/audio";
 
 export interface AudioMeterHandle {
   setLevel: (rawLevel: number) => void;
+  /** Flip to true once the analyser fires onset; locks the label to "Recording". */
+  setOnsetDetected: (detected: boolean) => void;
   reset: () => void;
 }
 
@@ -50,11 +52,27 @@ const PEAK_DECAY_PER_SEC = 0.5;
 // marker to the top. alpha = 0.04 → ~400 ms time constant at 60 fps.
 const PEAK_INPUT_SMOOTH_ALPHA = 0.04;
 
+// dB SPL the patient needs to reach for the rep to start (chart onset), derived
+// once from the same RMS threshold the analyser uses for onset.
+const ONSET_DB_SPL = rmsToDbSpl(ONSET_THRESHOLD);
+
+type LabelState =
+  | { kind: "listening" }
+  | { kind: "to_start"; gap: number }
+  | { kind: "recording" };
+
+function labelStateEqual(a: LabelState, b: LabelState): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "to_start" && b.kind === "to_start") return a.gap === b.gap;
+  return true;
+}
+
 export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
   function AudioMeter({ floorDb }, ref) {
     const fillRef = useRef<HTMLDivElement>(null);
     const peakRef = useRef<HTMLDivElement>(null);
     const dbReadoutRef = useRef<HTMLDivElement>(null);
+    const dbLabelRef = useRef<HTMLDivElement>(null);
 
     // Latest band, readable from the imperative setLevel closure.
     const bandRef = useRef({ floorDb, ceilingDb: TARGET_CEILING_DB });
@@ -69,6 +87,33 @@ export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
     const peakHoldUntilRef = useRef(0);
     const lastFrameTimeRef = useRef(0);
     const lastDbDisplayRef = useRef<number | null>(null);
+
+    // Onset latch — once the analyser declares onset, the label sticks to
+    // "Recording" even if the level dips mid-rep (prevents flicker).
+    const onsetDetectedRef = useRef(false);
+    const lastLabelStateRef = useRef<LabelState>({ kind: "listening" });
+
+    const applyLabelState = (state: LabelState) => {
+      const label = dbLabelRef.current;
+      if (!label) return;
+      if (labelStateEqual(lastLabelStateRef.current, state)) return;
+      lastLabelStateRef.current = state;
+      label.classList.remove("is-listening", "is-to-start", "is-recording");
+      switch (state.kind) {
+        case "listening":
+          label.textContent = "Listening…";
+          label.classList.add("is-listening");
+          break;
+        case "to_start":
+          label.textContent = `+${state.gap} dB to start`;
+          label.classList.add("is-to-start");
+          break;
+        case "recording":
+          label.textContent = "Recording";
+          label.classList.add("is-recording");
+          break;
+      }
+    };
 
     useImperativeHandle(
       ref,
@@ -85,8 +130,6 @@ export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
           smoothedRef.current =
             smoothedRef.current * (1 - alpha) + target * alpha;
           const frac = Math.min(Math.max(smoothedRef.current, 0), 1);
-
-          if (frac > 0.05) fill.classList.remove("pulsing");
 
           // ----- Bar height + zone colour -----
           fill.style.height = frac * 100 + "%";
@@ -127,15 +170,31 @@ export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
           }
 
           // ----- Numeric dB readout -----
+          const audibleEnough = dbInstant >= DB_SPL_DISPLAY_FLOOR;
           const dbReadout = dbReadoutRef.current;
           if (dbReadout) {
-            const display =
-              dbInstant < DB_SPL_DISPLAY_FLOOR ? null : Math.round(dbSmoothed);
+            const display = audibleEnough ? Math.round(dbSmoothed) : null;
             if (display !== lastDbDisplayRef.current) {
               lastDbDisplayRef.current = display;
               dbReadout.textContent = display === null ? "—" : `${display} dB`;
             }
           }
+
+          // ----- State label under the dB number -----
+          // After onset: "Recording". Before: "Listening…" while inaudible,
+          // then "+N dB to start" showing the live gap to the onset threshold.
+          if (onsetDetectedRef.current) {
+            applyLabelState({ kind: "recording" });
+          } else if (!audibleEnough) {
+            applyLabelState({ kind: "listening" });
+          } else {
+            const gap = Math.max(1, Math.round(ONSET_DB_SPL - dbInstant));
+            applyLabelState({ kind: "to_start", gap });
+          }
+        },
+        setOnsetDetected(detected: boolean) {
+          onsetDetectedRef.current = detected;
+          applyLabelState(detected ? { kind: "recording" } : { kind: "listening" });
         },
         reset() {
           smoothedRef.current = 0;
@@ -144,12 +203,15 @@ export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
           peakHoldUntilRef.current = 0;
           lastFrameTimeRef.current = 0;
           lastDbDisplayRef.current = null;
+          onsetDetectedRef.current = false;
+          // Force the next applyLabelState to write the DOM.
+          lastLabelStateRef.current = { kind: "recording" };
+          applyLabelState({ kind: "listening" });
 
           const fill = fillRef.current;
           if (fill) {
             fill.style.height = "0%";
             fill.style.backgroundColor = ZONE_COLORS.target;
-            fill.classList.add("pulsing");
           }
           const peak = peakRef.current;
           if (peak) {
@@ -172,7 +234,7 @@ export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
       <div className="audio-meter-wrapper">
         <div className="meter-track-wrapper">
           <div className="audio-meter-track">
-            <div ref={fillRef} className="audio-meter-fill pulsing" />
+            <div ref={fillRef} className="audio-meter-fill" />
           </div>
           <div ref={peakRef} className="meter-peak-marker" />
           <div
@@ -188,7 +250,13 @@ export const AudioMeter = forwardRef<AudioMeterHandle, AudioMeterProps>(
           <div ref={dbReadoutRef} className="db-readout">
             —
           </div>
-          <div className="db-readout-label">SPL (est.)</div>
+          <div
+            ref={dbLabelRef}
+            className="db-readout-label is-listening"
+            aria-live="polite"
+          >
+            Listening…
+          </div>
         </div>
       </div>
     );

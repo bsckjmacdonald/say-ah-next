@@ -142,7 +142,11 @@ export function ExerciseScreen({
           }
         },
         onStripUpdate: (buf) => stripRef.current?.draw(buf),
-        onOnset: () => setPrompt("Keep going... Ahhh"),
+        onOnset: () => {
+          setPrompt("Keep going... Ahhh");
+          meterRef.current?.setOnsetDetected(true);
+          stripRef.current?.setOnsetDetected(true);
+        },
       },
       onRepComplete,
     );

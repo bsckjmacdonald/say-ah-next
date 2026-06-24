@@ -462,9 +462,25 @@ svg {
 }
 .db-readout-label {
   font-size: 11px;
-  color: var(--color-fg-soft);
   margin-top: 3px;
   letter-spacing: 0.3px;
+  font-weight: 600;
+  transition: color 0.18s ease;
+}
+/* Pre-onset, signal under the dB display floor — nothing to gap-quote yet. */
+.db-readout-label.is-listening {
+  color: var(--color-fg-soft);
+  font-weight: 500;
+}
+/* Pre-onset, audible: shows "+N dB to start" — same accent blue as the
+   start-line and overlay on the strip chart so the patient ties the two
+   cues together as one message. */
+.db-readout-label.is-to-start {
+  color: rgb(0, 90, 180);
+}
+/* Post-onset latch: rep is in progress. */
+.db-readout-label.is-recording {
+  color: #157031;
 }
 
 /* Peak-hold marker — thin horizontal line that lingers at the recent
@@ -534,22 +550,6 @@ svg {
   background-color: var(--zone-target);
   transition: height 0.08s linear, background-color 0.12s ease;
   border-radius: 28px;
-}
-
-.audio-meter-fill.pulsing {
-  animation: pulse-meter 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-meter {
-  0%,
-  100% {
-    height: 4%;
-    opacity: 0.5;
-  }
-  50% {
-    height: 12%;
-    opacity: 0.85;
-  }
 }
 
 /* .meter-zone-labels and zone-label variants removed — zone labels are
@@ -1585,10 +1585,6 @@ svg {
   .chart-bar {
     transition: none;
     animation: none;
-  }
-  .audio-meter-fill.pulsing {
-    animation: none;
-    height: 5%;
   }
 }
 

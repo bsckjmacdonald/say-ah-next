@@ -8,12 +8,17 @@
 //     x-axis starts at 10 s and ratchets up in 5 s steps as the rep grows.
 //   - Final (on the result screen) — drawn from the completed buffer on mount.
 //     Same ratcheting scale so axes match what the user saw during the rep.
+//
+// Renders in calibrated dB SPL with an adaptive green band (floor→ceiling).
+// Before onset, the live chart also shows a "start" line + "louder to begin"
+// coaching overlay, cleared once the rep begins.
 // ============================================================================
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
   METER_AXIS_MAX_DB,
   METER_AXIS_MIN_DB,
+  ONSET_THRESHOLD,
   STRIP_INTERVAL_MS,
   STRIP_MAX_POINTS,
   TARGET_CEILING_DB,
@@ -31,6 +36,11 @@ interface RenderOpts {
   timeLabels: boolean;
   floorDb: number;
   ceilingDb: number;
+  /**
+   * When true (live chart, pre-onset), draw a coaching overlay telling the
+   * patient to get louder. The final/result chart leaves this off.
+   */
+  showStartCue?: boolean;
 }
 
 function renderLoudnessChart(
@@ -40,7 +50,7 @@ function renderLoudnessChart(
   buffer: number[],
   opts: RenderOpts,
 ) {
-  const { visiblePoints, timeLabels, floorDb, ceilingDb } = opts;
+  const { visiblePoints, timeLabels, floorDb, ceilingDb, showStartCue } = opts;
   // cH = full canvas height — time labels are drawn inset (no reserved strip).
   const cH = H;
 
@@ -121,6 +131,48 @@ function renderLoudnessChart(
     ctx.restore();
   }
 
+  // Pre-onset cue — dashed "start" line at the onset threshold plus a coaching
+  // overlay shown until the rep begins. Positioned on the dB axis. Cleared once
+  // setOnsetDetected(true) flips showStartCue off.
+  if (showStartCue) {
+    const onsetY = cH * (1 - rmsToFrac(ONSET_THRESHOLD));
+
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = "rgba(0, 90, 180, 0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, onsetY);
+    ctx.lineTo(W, onsetY);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font = 'bold 11px -apple-system,"SF Pro Text",Arial,sans-serif';
+    ctx.fillStyle = "rgba(0, 90, 180, 0.95)";
+    ctx.textAlign = "left";
+    ctx.fillText("start", 6, onsetY - 4);
+    ctx.restore();
+
+    if (!buffer || buffer.length === 0) {
+      const textX = W / 2;
+      const arrowY = onsetY + 26;
+      const lineY = arrowY + 20;
+
+      ctx.save();
+      ctx.textAlign = "center";
+
+      ctx.font = 'bold 22px -apple-system,"SF Pro Text",Arial,sans-serif';
+      ctx.fillStyle = "rgba(0, 90, 180, 0.85)";
+      ctx.fillText("↑", textX, arrowY);
+
+      ctx.font = 'bold 14px -apple-system,"SF Pro Text",Arial,sans-serif';
+      ctx.fillStyle = "rgba(0, 60, 130, 0.95)";
+      ctx.fillText("A little louder to begin", textX, lineY);
+      ctx.restore();
+    }
+  }
+
   if (!buffer || buffer.length === 0) return;
 
   const xStep = W / visiblePoints;
@@ -190,6 +242,8 @@ function renderLoudnessChart(
 // ----------------------------------------------------------------------------
 export interface LiveStripChartHandle {
   draw: (buffer: number[]) => void;
+  /** Flip to true once the analyser fires onset; clears the start overlay. */
+  setOnsetDetected: (detected: boolean) => void;
   reset: () => void;
 }
 
@@ -199,6 +253,7 @@ export const LiveStripChart = forwardRef<
 >(function LiveStripChart({ floorDb }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bufferRef = useRef<number[]>([]);
+  const onsetDetectedRef = useRef(false);
   // Latest floor, readable from the imperative draw() closure.
   const floorDbRef = useRef(floorDb);
   useEffect(() => {
@@ -219,36 +274,41 @@ export const LiveStripChart = forwardRef<
       timeLabels: true,
       floorDb: floorDbRef.current,
       ceilingDb: TARGET_CEILING_DB,
+      showStartCue: !onsetDetectedRef.current,
     });
   };
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        draw(buffer: number[]) {
-          bufferRef.current = buffer;
-          sizeAndDraw(buffer);
-        },
-        reset() {
-          bufferRef.current = [];
-          sizeAndDraw([]);
-        },
-      }),
-      [],
-    );
+  useImperativeHandle(
+    ref,
+    () => ({
+      draw(buffer: number[]) {
+        bufferRef.current = buffer;
+        sizeAndDraw(buffer);
+      },
+      setOnsetDetected(detected: boolean) {
+        onsetDetectedRef.current = detected;
+        sizeAndDraw(bufferRef.current);
+      },
+      reset() {
+        bufferRef.current = [];
+        onsetDetectedRef.current = false;
+        sizeAndDraw([]);
+      },
+    }),
+    [],
+  );
 
-    // Initial render after mount so the empty zone bands appear
-    useEffect(() => {
-      sizeAndDraw(bufferRef.current);
-    }, []);
+  // Initial render after mount so the empty zone bands appear
+  useEffect(() => {
+    sizeAndDraw(bufferRef.current);
+  }, []);
 
-    return (
-      <div className="strip-chart-wrapper">
-        <canvas ref={canvasRef} className="strip-chart" />
-      </div>
-    );
-  },
-);
+  return (
+    <div className="strip-chart-wrapper">
+      <canvas ref={canvasRef} className="strip-chart" />
+    </div>
+  );
+});
 
 // ----------------------------------------------------------------------------
 // Final chart — drawn from the rep snapshot
