@@ -9,12 +9,12 @@
 // ============================================================================
 
 import {
-  METER_LOUD_THRESHOLD,
-  METER_SOFT_THRESHOLD,
   STRAIN_DURATION_PERCENT,
   STRAIN_THRESHOLD,
+  TARGET_CEILING_DB,
   TARGET_DURATION_SECONDS,
 } from "./constants";
+import { rmsToDbSpl } from "./audio";
 import { formatSeconds } from "./format";
 import type {
   FeedbackCategory,
@@ -99,9 +99,15 @@ export function determineFeedbackCategory(
   highAmplitudeTime: number,
   allLoudness: number[],
   personalBest: number,
+  floorDb: number,
 ): { category: FeedbackCategory; newPersonalBest: number } {
-  const isTooSoft = avgRMS < METER_SOFT_THRESHOLD;
-  const isTooLoud = avgRMS >= METER_LOUD_THRESHOLD;
+  // Zone decision is in calibrated dB SPL: below the (adaptive) green floor is
+  // too soft; at/above the interim ceiling is too loud. This is the fix for the
+  // "healthy voice flagged too loud" complaint and the personal-best bug (a
+  // misclassified-loud rep could never set a PB).
+  const avgDb = rmsToDbSpl(avgRMS);
+  const isTooSoft = avgDb < floorDb;
+  const isTooLoud = avgDb >= TARGET_CEILING_DB;
 
   // Too loud / straining — ease up (highest priority override)
   if (isTooLoud || detectStrain(peakRMS, highAmplitudeTime, duration * 1000)) {
@@ -177,7 +183,9 @@ export function generateFeedback(
     allLoudness.length >= 1 ? allLoudness[allLoudness.length - 1] : null;
   const loudImproved = prevLoud !== null && avgRMS > prevLoud * 1.10;
   const loudDropped = prevLoud !== null && avgRMS < prevLoud * 0.85;
-  const timesTooLoud = allLoudness.filter((l) => l >= METER_LOUD_THRESHOLD).length;
+  const timesTooLoud = allLoudness.filter(
+    (l) => rmsToDbSpl(l) >= TARGET_CEILING_DB,
+  ).length;
 
   let spoken = "";
   let display = "";
@@ -357,7 +365,39 @@ export function generateFeedback(
       break;
   }
 
-  return { spoken, display, tip };
+  // Short personalized one-liner for TTS (name + actual seconds). Kept brief so
+  // it synthesizes fast enough to actually play in the chosen voice; the longer
+  // `spoken`/`display` still carry the full message on screen.
+  const nm = name ? `, ${name}` : "";
+  const npre = name ? `${name}, ` : "";
+  let spokenShort: string;
+  switch (category) {
+    case "personal_best":
+      spokenShort = `${dShort} seconds — a new best${nm}!`;
+      break;
+    case "great":
+      spokenShort = `${dShort} seconds${nm} — excellent!`;
+      break;
+    case "good":
+      spokenShort = `${dShort} seconds — nice work${nm}.`;
+      break;
+    case "keep_trying":
+      spokenShort = `${dShort} seconds. Hold it a little longer next time.`;
+      break;
+    case "too_soft":
+      spokenShort = `${npre}let's find more volume next round.`;
+      break;
+    case "too_loud":
+      spokenShort = `${npre}great power — ease back just a touch.`;
+      break;
+    case "tiring":
+      spokenShort = `${npre}take a breath, then come back strong.`;
+      break;
+    default:
+      spokenShort = `${dShort} seconds — good work${nm}.`;
+  }
+
+  return { spoken, spokenShort, display, tip };
 }
 
 // Session-complete message (also dynamic)

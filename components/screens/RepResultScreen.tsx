@@ -5,7 +5,7 @@ import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
 import { FinalStripChart } from "@/components/StripChart";
 import { formatSeconds, formatMinutesSeconds } from "@/lib/format";
-import { cancelSpeech } from "@/lib/tts";
+import { coachVoice } from "@/lib/coachVoice";
 import { RepRating } from "@/components/RepRating";
 import type { RepResult } from "@/hooks/useSession";
 import { CoachToggle } from "@/components/CoachToggle";
@@ -13,6 +13,7 @@ import { CoachToggle } from "@/components/CoachToggle";
 interface Props {
   result: RepResult;
   durations: number[];
+  floorDb: number;
   coachEnabled: boolean;
   onCoachToggle: (value: boolean) => void;
   onNext: () => void;
@@ -23,6 +24,7 @@ interface Props {
 export function RepResultScreen({
   result,
   durations,
+  floorDb,
   coachEnabled,
   onCoachToggle,
   onNext,
@@ -60,7 +62,7 @@ export function RepResultScreen({
 
   const handlePlayback = () => {
     if (!audioRef.current) return;
-    cancelSpeech();
+    coachVoice.cancel();
     audioRef.current.currentTime = 0;
     audioRef.current.play().then(
       () => setIsPlaying(true),
@@ -137,7 +139,7 @@ export function RepResultScreen({
           <p className="recording-discarded-note">Recording discarded.</p>
         )}
 
-        <FinalStripChart buffer={result.stripBuffer} />
+        <FinalStripChart buffer={result.stripBuffer} floorDb={floorDb} />
         <div className="result-message">{result.feedback.display}</div>
         <RepRating
           repNumber={result.repNumber}

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Say Ah — Clinician Setup Review · Calibration Screen</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fafafa;
+      color: #111;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #2a7c7c;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.01em; }
+    header span { font-size: 0.85rem; opacity: 0.75; }
+
+    main {
+      flex: 1;
+      padding: 32px 20px 48px;
+    }
+
+    .page-intro {
+      max-width: 800px;
+      margin: 0 auto 36px;
+    }
+    .page-intro h2 {
+      font-size: 1.15rem;
+      color: #2a7c7c;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .page-intro p {
+      font-size: 0.88rem;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    /* State section layout */
+    .states-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .state-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .state-label {
+      background: #374151;
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 4px 4px 0 0;
+      align-self: flex-start;
+      margin-left: 12px;
+    }
+
+    /* Phone frame */
+    .phone {
+      width: 380px;
+      min-height: 600px;
+      background: white;
+      border: 2px solid #374151;
+      border-radius: 28px;
+      padding: 24px 20px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    /* Progress pip */
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .progress-label {
+      font-size: 0.75rem;
+      color: #2a7c7c;
+      font-weight: 600;
+      flex: 1;
+    }
+    .progress-pips {
+      display: flex;
+      gap: 5px;
+    }
+    .pip {
+      width: 28px;
+      height: 5px;
+      border-radius: 3px;
+      background: #e5e7eb;
+    }
+    .pip.active { background: #2a7c7c; }
+    .pip.done { background: #a3d9d9; }
+
+    /* Screen heading */
+    .screen-heading {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+
+    /* Instruction text */
+    .instruction {
+      font-size: 1rem;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    /* Primary button */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      background: #2a7c7c;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 16px 20px;
+      border-radius: 8px;
+      text-align: center;
+      border: none;
+      cursor: default;
+      margin-top: auto;
+    }
+
+    /* Secondary (outline) button */
+    .btn-secondary {
+      display: block;
+      flex: 1;
+      background: white;
+      color: #2a7c7c;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 13px 12px;
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid #2a7c7c;
+      cursor: default;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    /* Countdown */
+    .countdown {
+      font-size: 5rem;
+      font-weight: 800;
+      color: #2a7c7c;
+      text-align: center;
+      line-height: 1;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+
+    /* VU level bar */
+    .level-bar-wrap {
+      margin-bottom: 8px;
+    }
+    .level-bar-bg {
+      width: 100%;
+      height: 36px;
+      background: #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .level-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #2a7c7c 0%, #3aadad 100%);
+      transition: width 0.1s;
+      position: relative;
+    }
+    .level-bar-fill::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 0 6px 6px 0;
+    }
+    .level-bar-label {
+      font-size: 0.85rem;
+      color: #555;
+      text-align: center;
+      margin-top: 7px;
+    }
+    .level-bar-sublabel {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      text-align: center;
+      margin-top: 4px;
+      margin-bottom: 20px;
+    }
+
+    /* Tick marks on bar */
+    .level-ticks {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 1px;
+      margin-top: 3px;
+      margin-bottom: 14px;
+    }
+    .level-ticks span {
+      font-size: 0.65rem;
+      color: #9ca3af;
+    }
+
+    /* Result badge */
+    .result-badge {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    .result-badge.good {
+      background: #ecfdf5;
+      border: 2px solid #059669;
+    }
+    .result-badge.marginal {
+      background: #fffbeb;
+      border: 2px solid #f59e0b;
+    }
+    .result-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .result-text {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .result-badge.good .result-text { color: #059669; }
+    .result-badge.marginal .result-text { color: #b45309; }
+    .result-sub {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-top: 3px;
+      font-weight: 400;
+    }
+
+    /* Mini level bar for result */
+    .mini-level-wrap {
+      margin-bottom: 22px;
+    }
+    .mini-level-label {
+      font-size: 0.78rem;
+      color: #555;
+      margin-bottom: 5px;
+    }
+    .mini-level-bg {
+      width: 100%;
+      height: 16px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .mini-level-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2a7c7c 0%, #3aadad 100%);
+      border-radius: 4px;
+    }
+
+    /* ---- Annotation callout system ---- */
+    .annotation-zone {
+      position: relative;
+    }
+
+    .callout {
+      position: absolute;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-style: italic;
+      line-height: 1.4;
+      max-width: 170px;
+      background: #fafafa;
+      padding: 5px 8px;
+      border: 1px dotted #9ca3af;
+      border-radius: 4px;
+    }
+
+    /* Callout connector line drawn via SVG overlay */
+    .callout-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    /* Wrapper with callouts pushed to sides */
+    .annotated-wrapper {
+      position: relative;
+      width: 760px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .callout-left {
+      position: absolute;
+      left: 0;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-style: italic;
+      line-height: 1.5;
+      max-width: 160px;
+      background: #fafafa;
+      padding: 6px 8px;
+      border: 1px dotted #9ca3af;
+      border-radius: 4px;
+    }
+    .callout-right {
+      position: absolute;
+      right: 0;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-style: italic;
+      line-height: 1.5;
+      max-width: 160px;
+      background: #fafafa;
+      padding: 6px 8px;
+      border: 1px dotted #9ca3af;
+      border-radius: 4px;
+    }
+
+    /* Spacer so states don't overlap */
+    .spacer { height: 28px; }
+
+    /* Design note section */
+    .design-notes {
+      max-width: 720px;
+      margin: 48px auto 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .design-notes h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #2a7c7c;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+    .design-notes ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .design-notes li {
+      font-size: 0.84rem;
+      color: #555;
+      line-height: 1.6;
+      padding-left: 18px;
+      position: relative;
+    }
+    .design-notes li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: #9ca3af;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 48px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Say Ah — Clinician Setup Review</h1>
+  <span>· Calibration Screen (Step 1 of 3)</span>
+</header>
+
+<main>
+  <div class="page-intro">
+    <h2>Microphone Calibration — Screen Wireframe</h2>
+    <p>Three states shown: Ready to begin / Recording in progress / Result. Annotations (italicized, dotted borders) explain design rationale for the clinical setup context.</p>
+  </div>
+
+  <div class="states-grid">
+
+    <!-- ============================================================ -->
+    <!-- STATE 1 — Ready to begin -->
+    <!-- ============================================================ -->
+    <div class="state-section">
+      <div class="state-label">State 1 — Ready to Begin</div>
+      <div class="phone">
+        <div class="progress-bar">
+          <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+          <div class="progress-pips">
+            <div class="pip active"></div>
+            <div class="pip"></div>
+            <div class="pip"></div>
+          </div>
+        </div>
+
+        <div class="screen-heading">Microphone<br>Check</div>
+
+        <p class="instruction">When your clinician says go, say <strong>"ahhh"</strong> in your normal speaking voice and hold it for 5 seconds.</p>
+
+        <div style="background:#f0fafa; border-radius:8px; padding:14px 16px; margin-bottom:28px;">
+          <p style="font-size:0.82rem; color:#2a7c7c; font-weight:600; margin-bottom:4px;">What to expect</p>
+          <p style="font-size:0.82rem; color:#555; line-height:1.5;">A meter will appear showing your voice level. Your clinician can see it too.</p>
+        </div>
+
+        <div style="margin-top: auto;">
+          <div class="btn-primary">I'm ready — Start</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STATE 2 — Recording in progress -->
+    <!-- ============================================================ -->
+    <div class="state-section">
+      <div class="state-label">State 2 — Recording in Progress</div>
+
+      <!-- Outer annotated wrapper -->
+      <div style="position:relative; width:560px; display:flex; justify-content:center;">
+
+        <!-- Left callout: level bar rationale -->
+        <div class="callout-left" style="top: 220px; left: 0;">
+          Level bar is large enough to be visible via video call screen share — the clinician reads it even if patient doesn't understand it.
+        </div>
+
+        <!-- Connector line (left) — drawn absolutely -->
+        <svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible;">
+          <!-- line from right edge of callout (~160px) to left edge of phone at mid-bar height -->
+          <line x1="160" y1="285" x2="190" y2="285" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="160" cy="285" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <!-- Right callout: "clinician is watching" -->
+        <div class="callout-right" style="top: 310px; right: 0;">
+          "Clinician is watching" text reassures patient they're not alone, and cues the clinician to actually observe the meter.
+        </div>
+
+        <!-- Connector line (right) -->
+        <svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible;">
+          <line x1="400" y1="350" x2="370" y2="350" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="400" cy="350" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <div class="phone" style="width:380px; flex-shrink:0;">
+          <div class="progress-bar">
+            <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+            <div class="progress-pips">
+              <div class="pip active"></div>
+              <div class="pip"></div>
+              <div class="pip"></div>
+            </div>
+          </div>
+
+          <div class="countdown">3</div>
+
+          <div class="level-bar-wrap">
+            <div class="level-bar-bg">
+              <div class="level-bar-fill" style="width: 62%;"></div>
+            </div>
+            <div class="level-ticks">
+              <span>Too quiet</span>
+              <span>Good</span>
+              <span>Too loud</span>
+            </div>
+            <div class="level-bar-label">Keep going…</div>
+            <div class="level-bar-sublabel">Your clinician is watching the level</div>
+          </div>
+
+          <!-- Animation hint -->
+          <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px; margin-top: 4px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:#2a7c7c; opacity:1;"></div>
+            <div style="width:8px; height:8px; border-radius:50%; background:#2a7c7c; opacity:0.5;"></div>
+            <div style="width:8px; height:8px; border-radius:50%; background:#2a7c7c; opacity:0.2;"></div>
+          </div>
+          <p style="font-size:0.75rem; color:#9ca3af; text-align:center; font-style:italic;">(bar animates in real-time)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STATE 3 — Result shown (two sub-states) -->
+    <!-- ============================================================ -->
+    <div class="state-section">
+      <div class="state-label">State 3 — Result (Good &amp; Marginal variants)</div>
+
+      <div style="position:relative; width:600px; display:flex; justify-content:center; gap: 20px;">
+
+        <!-- Right callout: why two result states -->
+        <div class="callout-right" style="top: 30px; right: 0; max-width: 140px;">
+          Two result states: "Good" clears the patient to proceed; "Marginal" prompts a retry but still allows continuing if clinician accepts it.
+        </div>
+
+        <svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible;">
+          <line x1="458" y1="80" x2="432" y2="80" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="458" cy="80" r="3" fill="#9ca3af"/>
+        </svg>
+
+        <!-- Sub-state: GOOD -->
+        <div>
+          <p style="font-size:0.7rem; font-weight:700; color:#059669; text-align:center; margin-bottom:6px; letter-spacing:0.06em; text-transform:uppercase;">Variant A — Good</p>
+          <div class="phone" style="width:280px; min-height:520px;">
+            <div class="progress-bar">
+              <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+              <div class="progress-pips">
+                <div class="pip done"></div>
+                <div class="pip"></div>
+                <div class="pip"></div>
+              </div>
+            </div>
+
+            <div class="result-badge good">
+              <div class="result-icon">&#10003;</div>
+              <div>
+                <div class="result-text">Good signal</div>
+                <div class="result-sub">Level was clear and consistent</div>
+              </div>
+            </div>
+
+            <div class="mini-level-wrap">
+              <div class="mini-level-label">Average level</div>
+              <div class="mini-level-bg">
+                <div class="mini-level-fill" style="width: 58%;"></div>
+              </div>
+            </div>
+
+            <div class="btn-row" style="margin-top:auto;">
+              <div class="btn-secondary" style="font-size:0.82rem;">Try again</div>
+              <div class="btn-primary" style="font-size:0.85rem;">Accept &amp; continue &#8594;</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-state: MARGINAL -->
+        <div>
+          <p style="font-size:0.7rem; font-weight:700; color:#b45309; text-align:center; margin-bottom:6px; letter-spacing:0.06em; text-transform:uppercase;">Variant B — Marginal</p>
+          <div class="phone" style="width:280px; min-height:520px;">
+            <div class="progress-bar">
+              <div class="progress-label">Step 1 of 3 — Microphone Check</div>
+              <div class="progress-pips">
+                <div class="pip" style="background:#f59e0b;"></div>
+                <div class="pip"></div>
+                <div class="pip"></div>
+              </div>
+            </div>
+
+            <div class="result-badge marginal">
+              <div class="result-icon" style="color:#f59e0b;">&#9651;</div>
+              <div>
+                <div class="result-text">Marginal signal</div>
+                <div class="result-sub">Try again if clinician advises</div>
+              </div>
+            </div>
+
+            <div class="mini-level-wrap">
+              <div class="mini-level-label">Average level</div>
+              <div class="mini-level-bg">
+                <div class="mini-level-fill" style="width: 24%; background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
+              </div>
+            </div>
+
+            <div class="btn-row" style="margin-top:auto;">
+              <div class="btn-secondary" style="font-size:0.82rem; border-color:#f59e0b; color:#b45309;">Try again</div>
+              <div class="btn-primary" style="font-size:0.85rem; background:#6b7280;">Continue anyway &#8594;</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Annotation below the result phones -->
+      <div style="max-width:580px; margin-top:16px; background:#fafafa; border:1px dotted #9ca3af; border-radius:6px; padding:10px 14px;">
+        <p style="font-size:0.72rem; color:#6b7280; font-style:italic; line-height:1.6;">
+          <strong style="font-style:normal; color:#555;">Why "Try again" is always shown:</strong> The clinician — not the patient — decides whether to retry. The patient just needs the button available. "Continue anyway" is de-emphasized (gray) on marginal to nudge retry, but doesn't block the clinician from accepting.
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /states-grid -->
+
+  <!-- Design notes -->
+  <div class="design-notes">
+    <h3>Annotations &amp; Design Rationale</h3>
+    <ul>
+      <li><strong>Level bar prominence:</strong> The VU meter bar is deliberately oversized (36px tall) so it is legible in a video call screen share at reduced resolution. The clinician is the primary reader of this bar, not the patient.</li>
+      <li><strong>"Your clinician is watching":</strong> This line serves two audiences simultaneously — it reassures the patient they are not alone in judging their performance, and it cues the clinician to actively monitor the meter rather than passively observing.</li>
+      <li><strong>Countdown over progress bar:</strong> A large numeric countdown (5…4…3…2…1) replaces a generic progress bar because elderly users find numbers more immediately understandable than abstract fill animations. The bar is secondary information.</li>
+      <li><strong>Two result variants:</strong> "Good" and "Marginal" map to real acoustic thresholds (signal-to-noise). The marginal state does not block progress — the clinician may accept it if a retry is impractical. An outright failure state (no signal detected) would show a separate error card not shown here.</li>
+      <li><strong>Large tap targets:</strong> All buttons are full-width or half-width with ≥48px touch height, suitable for patients with reduced fine motor control.</li>
+    </ul>
+  </div>
+
+</main>
+
+<footer>Draft for team review — May 2026 — not final design</footer>
+
+</body>
+</html>

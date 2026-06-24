@@ -9,11 +9,19 @@
 // ============================================================================
 
 import { useCallback, useEffect, useState } from "react";
-import { TOTAL_REPS } from "@/lib/constants";
+import { TOTAL_REPS, DB_SPL_CALIBRATION_OFFSET } from "@/lib/constants";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useSession, type RepResult } from "@/hooks/useSession";
-import { primeVoices, speakMessage, cancelSpeech } from "@/lib/tts";
-import { loadCoachEnabled, saveCoachEnabled } from "@/lib/storage";
+import { primeVoices } from "@/lib/tts";
+import { coachVoice } from "@/lib/coachVoice";
+import { setActiveCalibrationOffset } from "@/lib/audio";
+import {
+  loadCoachEnabled,
+  saveCoachEnabled,
+  loadCoachVoice,
+  loadCoachingLevel,
+  loadDeviceOffset,
+} from "@/lib/storage";
 import { ConstraintDiagnostic } from "@/components/ConstraintDiagnostic";
 import { WelcomeScreen } from "@/components/screens/WelcomeScreen";
 import { MicPermissionScreen } from "@/components/screens/MicPermissionScreen";
@@ -31,13 +39,33 @@ export default function Page() {
   const [summaryMessage, setSummaryMessage] = useState("");
   const [coachEnabled, setCoachEnabled] = useState(true);
 
-  const session = useSession(TOTAL_REPS);
   const analyser = useAudioAnalyser({ coachEnabled });
+  const session = useSession(TOTAL_REPS, analyser.deviceId);
 
-  // Hydrate persisted settings from localStorage after mount.
+  // Apply the per-device calibration offset once the mic deviceId resolves, so
+  // every dB SPL conversion (meter, zones, coach) uses the calibrated value.
   useEffect(() => {
+    if (analyser.deviceId) {
+      setActiveCalibrationOffset(
+        loadDeviceOffset(analyser.deviceId, DB_SPL_CALIBRATION_OFFSET),
+      );
+    }
+  }, [analyser.deviceId]);
+
+  // Hydrate persisted settings from localStorage after mount. Reading
+  // localStorage during render would hydrate-mismatch under SSR, so this
+  // one-time setState in an effect is the intended "subscribe to an external
+  // system" case (same pattern as useSession).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCoachEnabled(loadCoachEnabled());
     primeVoices();
+    coachVoice.setVoice(loadCoachVoice());
+    // Start loading the Kokoro model early (in the worker) when the coach is
+    // on, so it's warm by the first round instead of cold-loading mid-session.
+    if (loadCoachEnabled() && loadCoachingLevel() !== "minimal") {
+      void coachVoice.load();
+    }
   }, []);
 
   const handleCoachToggle = useCallback((value: boolean) => {
@@ -67,38 +95,45 @@ export default function Page() {
     (completion: RepCompletion) => {
       const result = session.completeRep(completion);
       setRepResult(result);
-      // Slightly warmer-than-default prosody for the long-form encouragement.
-      // Coach cues use a stronger boost (see ExerciseScreen); this is gentler
-      // because these messages are full sentences, not short bursts.
-      if (result.feedback.spoken)
-        speakMessage(result.feedback.spoken, { rate: 1.08, pitch: 1.1 });
+      // Speak a SHORT personalized line (name + actual seconds) — it synthesizes
+      // fast enough to win the race and play in the chosen voice. If it still
+      // isn't ready, a varied in-voice fallback plays (never the web voice). The
+      // full detail stays on screen.
+      if (result.feedback.spokenShort)
+        void coachVoice.speakContextual(result.feedback.spokenShort, {
+          maxWaitMs: 4000,
+        });
       setScreen("rep-result");
     },
     [session],
   );
 
   const handleNextRep = useCallback(() => {
-    cancelSpeech();
+    coachVoice.cancel();
     session.advanceRep();
     setScreen("exercise");
   }, [session]);
 
   const handleSeeResults = useCallback(() => {
-    cancelSpeech();
+    coachVoice.cancel();
     const msg = session.finishSession();
     setSummaryMessage(msg);
-    speakMessage(msg, { rate: 1.08, pitch: 1.1 });
+    // Short personalized closing (synthesizes quickly); full summary on screen.
+    const close = session.userName
+      ? `${session.userName}, great session — your voice is getting stronger!`
+      : "Great session — your voice is getting stronger!";
+    void coachVoice.speakContextual(close, { maxWaitMs: 4000 });
     setScreen("session-complete");
   }, [session]);
 
   const handleFinish = useCallback(() => {
-    cancelSpeech();
+    coachVoice.cancel();
     session.reset();
     setScreen("welcome");
   }, [session]);
 
   const handleRestart = useCallback(() => {
-    cancelSpeech();
+    coachVoice.cancel();
     session.startSession();
     setScreen(analyser.isReady() ? "pre-rep" : "mic-permission");
   }, [analyser, session]);
@@ -149,6 +184,7 @@ export default function Page() {
           currentRep={session.currentRep}
           tip={session.nextRepTip}
           analyser={analyser}
+          floorDb={session.floorDb}
           onRepComplete={handleRepComplete}
         />
       )}
@@ -156,6 +192,7 @@ export default function Page() {
         <RepResultScreen
           result={repResult}
           durations={session.durations}
+          floorDb={session.floorDb}
           coachEnabled={coachEnabled}
           onCoachToggle={handleCoachToggle}
           onNext={handleNextRep}

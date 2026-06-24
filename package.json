@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gen:coach-audio": "node scripts/generate-coach-audio.mjs"
   },
   "dependencies": {
     "kokoro-js": "^1.2.1",

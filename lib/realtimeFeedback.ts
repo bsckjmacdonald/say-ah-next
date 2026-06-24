@@ -21,7 +21,6 @@
 
 import { rmsToDbSpl } from "./audio";
 import {
-  METER_SOFT_THRESHOLD,
   RT_FEEDBACK_DROP_DB,
   RT_FEEDBACK_FIRST_CUE_MS,
   RT_FEEDBACK_INTERVAL_MS,
@@ -30,25 +29,18 @@ import {
 } from "./constants";
 import { pickUnused } from "./feedback";
 import type { FeedbackHistory } from "./types";
+import cuePools from "./coachCues.json";
 
 // Phrase pools, categorised exactly as the LSVT real-time feedback doc
-// recommends. Always positive — no criticism phrases anywhere in this file.
-const PHRASES: Record<string, string[]> = {
-  early_good: ["Good!", "Yes!", "Nice start!", "That's it!"],
-  mid_sustain: [
-    "Keep going!",
-    "You've got this!",
-    "Stay strong!",
-    "Keep it up!",
-  ],
-  push_harder: ["Push!", "Louder!", "More effort!", "Give it more!"],
-  prevent_fade: ["Don't let it drop!", "Stay loud!", "Don't fade!"],
-  near_end: ["Almost there!", "Just a bit more!", "Strong finish!"],
-};
+// recommends. Always positive — no criticism phrases. SHORT (1–3 words) because
+// they play OVER the patient's phonation; variety comes from large pools, not
+// length. Single source of truth in coachCues.json so the static-audio
+// generator (scripts/generate-coach-audio.mjs) and the app can't drift.
+const PHRASES: Record<string, string[]> = cuePools;
 
-// "Below this dB is too soft" — derived once from the existing RMS threshold
-// so the realtime coach uses the same target zone the meter visualizes.
-const TARGET_LOW_DB = rmsToDbSpl(METER_SOFT_THRESHOLD);
+// Flat list of every cue phrase, for pre-synthesizing the coach voice during
+// the countdown so cues play with zero latency during a rep.
+export const ALL_RT_PHRASES: string[] = Object.values(PHRASES).flat();
 
 // Per-frame smoothing so single-frame spikes don't skew the decision logic.
 // At ~60 fps, alpha=0.1 gives a time constant of ~160 ms.
@@ -87,6 +79,7 @@ export function evaluateRealtimeFeedback(
   currentRms: number,
   state: RealtimeFeedbackState,
   nowMs: number,
+  floorDb: number,
 ): string | null {
   // Update smoothed level and rolling peak. We do this every frame, even
   // when no cue will fire, so the next eligible cue has fresh data.
@@ -109,7 +102,9 @@ export function evaluateRealtimeFeedback(
   }
 
   // ── Category selection ────────────────────────────────────────────────
-  const tooSoft = dbNow < TARGET_LOW_DB;
+  // "Too soft" is measured against the patient's adaptive green floor (same
+  // band the meter shows), computed live so it tracks the calibrated offset.
+  const tooSoft = dbNow < floorDb;
   const dropped =
     state.cueCount > 0 && state.peakDb - dbNow >= RT_FEEDBACK_DROP_DB;
   const nearEnd = elapsedMs >= RT_FEEDBACK_NEAR_END_MS;

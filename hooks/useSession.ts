@@ -20,9 +20,19 @@ import {
 import {
   loadHistory,
   loadPersonalBest,
+  loadDeviceBaseline,
+  saveDeviceBaseline,
   saveSession,
   savePersonalBest,
 } from "@/lib/storage";
+import { rmsToDbSpl } from "@/lib/audio";
+import {
+  FLOOR_RATCHET_AFTER_REPS,
+  FLOOR_RATCHET_MARGIN_DB,
+  FLOOR_RATCHET_MAX_DB,
+  FLOOR_RATCHET_STEP_DB,
+  TARGET_FLOOR_DEFAULT_DB,
+} from "@/lib/constants";
 import type {
   FeedbackHistory,
   FeedbackResult,
@@ -48,6 +58,8 @@ export interface UseSession {
   loudness: number[];
   personalBest: number;
   history: SessionRecord[];
+  /** Current green-zone floor in dB SPL (adaptive, per-patient). */
+  floorDb: number;
   /** Tip from the previous rep, shown briefly on the next exercise screen. */
   nextRepTip: string | null;
   startSession: () => void;
@@ -61,17 +73,25 @@ export interface UseSession {
   refreshHistory: () => void;
 }
 
-export function useSession(totalReps: number): UseSession {
+export function useSession(
+  totalReps: number,
+  deviceId: string | null,
+): UseSession {
   const [userName, setUserName] = useState("");
   const [currentRep, setCurrentRep] = useState(0);
   const [durations, setDurations] = useState<number[]>([]);
   const [loudness, setLoudness] = useState<number[]>([]);
   const [personalBest, setPersonalBest] = useState(0);
   const [history, setHistory] = useState<SessionRecord[]>([]);
+  const [floorDb, setFloorDb] = useState(TARGET_FLOOR_DEFAULT_DB);
   const [nextRepTip, setNextRepTip] = useState<string | null>(null);
 
   // Mutable cycling state for the deck-deal feedback picker
   const feedbackHistoryRef = useRef<FeedbackHistory>({});
+
+  // Count of consecutive reps that cleared the floor comfortably — drives the
+  // upward ratchet.
+  const consecutiveClearsRef = useRef(0);
 
   // Hydrate from localStorage after mount. Reading localStorage during
   // render isn't safe (Next.js SSR would mismatch on hydration), so the
@@ -79,10 +99,16 @@ export function useSession(totalReps: number): UseSession {
   // flags it. This is exactly the "subscribe to an external system" case
   // useEffect is designed for.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPersonalBest(loadPersonalBest());
     setHistory(loadHistory());
   }, []);
+
+  // Load the per-device green floor once the mic deviceId resolves (clinician
+  // baseline from /setup, or the ratcheted value from a prior session). Falls
+  // back to the default until then.
+  useEffect(() => {
+    setFloorDb(loadDeviceBaseline(deviceId, TARGET_FLOOR_DEFAULT_DB));
+  }, [deviceId]);
 
   const startSession = useCallback(() => {
     setCurrentRep(1);
@@ -90,6 +116,7 @@ export function useSession(totalReps: number): UseSession {
     setLoudness([]);
     setNextRepTip(null);
     feedbackHistoryRef.current = {};
+    consecutiveClearsRef.current = 0;
   }, []);
 
   const completeRep = useCallback(
@@ -117,11 +144,38 @@ export function useSession(totalReps: number): UseSession {
         highAmplitudeTime,
         prevLoudness,
         personalBest,
+        floorDb,
       );
 
       if (newPersonalBest > personalBest) {
         setPersonalBest(newPersonalBest);
         savePersonalBest(newPersonalBest);
+      }
+
+      // ── Adaptive floor ratchet ──────────────────────────────────────────
+      // A rep "clears" the floor when it sits comfortably above it and isn't
+      // too loud. After several consecutive clears, nudge the floor up (capped)
+      // and persist so the patient keeps the gain next session. Always rises,
+      // never falls; a clinician can reset it in /setup.
+      const avgDb = rmsToDbSpl(avgRMS);
+      const cleared =
+        category !== "too_soft" &&
+        category !== "too_loud" &&
+        avgDb >= floorDb + FLOOR_RATCHET_MARGIN_DB;
+      consecutiveClearsRef.current = cleared
+        ? consecutiveClearsRef.current + 1
+        : 0;
+      if (
+        consecutiveClearsRef.current >= FLOOR_RATCHET_AFTER_REPS &&
+        floorDb < FLOOR_RATCHET_MAX_DB
+      ) {
+        const nextFloor = Math.min(
+          floorDb + FLOOR_RATCHET_STEP_DB,
+          FLOOR_RATCHET_MAX_DB,
+        );
+        setFloorDb(nextFloor);
+        if (deviceId) saveDeviceBaseline(deviceId, nextFloor);
+        consecutiveClearsRef.current = 0;
       }
 
       const feedback = generateFeedback(
@@ -153,7 +207,16 @@ export function useSession(totalReps: number): UseSession {
         audioUrl,
       };
     },
-    [currentRep, durations, loudness, personalBest, totalReps, userName],
+    [
+      currentRep,
+      durations,
+      loudness,
+      personalBest,
+      totalReps,
+      userName,
+      deviceId,
+      floorDb,
+    ],
   );
 
   const advanceRep = useCallback(() => {
@@ -185,6 +248,7 @@ export function useSession(totalReps: number): UseSession {
     loudness,
     personalBest,
     history,
+    floorDb,
     nextRepTip,
     startSession,
     completeRep,

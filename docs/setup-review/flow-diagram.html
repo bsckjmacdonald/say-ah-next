@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Say Ah — Clinician Setup Review · Flow Diagram</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fafafa;
+      color: #111;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #2a7c7c;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.01em; }
+    header span { font-size: 0.85rem; opacity: 0.75; }
+
+    main {
+      flex: 1;
+      padding: 32px 24px;
+      overflow-x: auto;
+    }
+
+    h2 {
+      font-size: 1.15rem;
+      color: #2a7c7c;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 28px;
+    }
+
+    .diagram-wrap {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    svg {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* Legend */
+    .legend {
+      margin-top: 28px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+    .legend-title {
+      width: 100%;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #555;
+    }
+    .legend-box {
+      width: 36px;
+      height: 20px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Say Ah — Clinician Setup Review</h1>
+  <span>· Flow Diagram</span>
+</header>
+
+<main>
+  <h2>Clinician Setup Session — Full Flow</h2>
+  <p class="subtitle">Two-column layout: Clinician (left) and Patient Device (right), with decision branches including re-calibration.</p>
+
+  <div class="diagram-wrap">
+    <!--
+      LAYOUT:
+      Total width: 900px
+      Left column (clinician): x=0..230, center x=115
+      Separator: x=230
+      Right column (patient): x=230..900, center x=565
+      Row heights (top of each row's box zone):
+        Header row: y=0..50
+        Row 1 (Session start): y=50..140
+        Row 2 (Decision): y=140..260
+        Row 3 (Welcome): y=260..360
+        Row 4 (Calibration): y=360..520
+        Row 5 (Quality decision): y=520..630
+        Row 6 (Voice): y=630..730
+        Row 7 (Level): y=730..830
+        Row 8 (End): y=830..980
+        Re-cal side box: y=400..600 at x=710..890
+        Total height: 1020
+    -->
+    <svg viewBox="0 0 900 1040" width="900" height="1040" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Standard dark arrow -->
+        <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#374151"/>
+        </marker>
+        <!-- Teal dashed arrow (clinician link) -->
+        <marker id="arr-teal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#2a7c7c"/>
+        </marker>
+        <!-- Green arrow (yes / accept) -->
+        <marker id="arr-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#059669"/>
+        </marker>
+        <!-- Red arrow (retry) -->
+        <marker id="arr-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+        </marker>
+        <!-- Amber arrow (recal) -->
+        <marker id="arr-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"/>
+        </marker>
+      </defs>
+
+      <!-- ===== COLUMN BACKGROUNDS ===== -->
+      <!-- Clinician column background -->
+      <rect x="0" y="0" width="230" height="1040" fill="#f0fafa"/>
+      <!-- Patient column background -->
+      <rect x="230" y="0" width="670" height="1040" fill="#ffffff"/>
+
+      <!-- Vertical separator -->
+      <line x1="230" y1="0" x2="230" y2="1040" stroke="#2a7c7c" stroke-width="1" stroke-dasharray="6,4"/>
+
+      <!-- ===== COLUMN HEADERS ===== -->
+      <rect x="0" y="0" width="230" height="48" fill="#1a5f5f"/>
+      <text x="115" y="20" font-size="11" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.08em">CLINICIAN</text>
+      <text x="115" y="36" font-size="10" fill="#a7f3d0" text-anchor="middle">(remote — video call)</text>
+
+      <rect x="230" y="0" width="670" height="48" fill="#374151"/>
+      <text x="565" y="28" font-size="11" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.08em">PATIENT'S DEVICE</text>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 1 — Session start (y zone: 60–145) -->
+      <!-- ===================================================== -->
+
+      <!-- LEFT: Clinician shares URL / QR -->
+      <rect x="12" y="62" width="206" height="72" rx="8" fill="#2a7c7c"/>
+      <text x="115" y="88" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician shares /setup</text>
+      <text x="115" y="104" font-size="11" fill="white" text-anchor="middle">URL or QR code</text>
+      <text x="115" y="120" font-size="11" fill="white" text-anchor="middle">via video call</text>
+
+      <!-- RIGHT: Patient opens /setup -->
+      <rect x="330" y="62" width="200" height="72" rx="8" fill="#2a7c7c"/>
+      <text x="430" y="92" font-size="11" font-weight="600" fill="white" text-anchor="middle">Patient opens /setup</text>
+      <text x="430" y="110" font-size="11" fill="white" text-anchor="middle">on device</text>
+
+      <!-- Dashed arrow LEFT→RIGHT (clinician hands off) -->
+      <line x1="230" y1="98" x2="328" y2="98" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-teal)"/>
+
+      <!-- ===================================================== -->
+      <!-- ROW 2 — Decision: setup done before? (y zone: 155–270) -->
+      <!-- ===================================================== -->
+
+      <!-- Arrow: patient box → diamond -->
+      <line x1="430" y1="134" x2="430" y2="167" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Diamond centred at (430, 200): half-width=60, half-height=34 -->
+      <polygon points="430,167 500,200 430,233 360,200" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+      <text x="430" y="196" font-size="11" font-weight="600" fill="#374151" text-anchor="middle">Setup already</text>
+      <text x="430" y="211" font-size="11" fill="#374151" text-anchor="middle">done?</text>
+
+      <!-- YES branch → right side fast path -->
+      <line x1="500" y1="200" x2="560" y2="200" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-green)"/>
+      <text x="527" y="193" font-size="10" font-weight="700" fill="#059669">YES</text>
+
+      <!-- Fast-path box: "Settings load silently" -->
+      <rect x="560" y="168" width="180" height="40" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+      <text x="650" y="184" font-size="10" font-weight="600" fill="#059669" text-anchor="middle">Settings load silently</text>
+      <text x="650" y="199" font-size="10" fill="#059669" text-anchor="middle">(stored prefs applied)</text>
+
+      <!-- Arrow down to "Main app opens" -->
+      <line x1="650" y1="208" x2="650" y2="230" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+      <!-- "Main app opens" box -->
+      <rect x="560" y="230" width="180" height="36" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+      <text x="650" y="253" font-size="10" font-weight="600" fill="#059669" text-anchor="middle">Main app opens → END</text>
+
+      <!-- END pill for fast path -->
+      <line x1="650" y1="266" x2="650" y2="285" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-green)"/>
+      <rect x="617" y="285" width="66" height="24" rx="12" fill="#059669"/>
+      <text x="650" y="301" font-size="10" font-weight="700" fill="white" text-anchor="middle">END</text>
+
+      <!-- NO branch: arrow down from diamond -->
+      <line x1="430" y1="233" x2="430" y2="268" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="440" y="254" font-size="10" font-weight="700" fill="#374151">NO</text>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 3 — Welcome screen (y zone: 270–360) -->
+      <!-- ===================================================== -->
+
+      <!-- LEFT: Clinician narrates welcome screen -->
+      <rect x="12" y="272" width="206" height="72" rx="8" fill="#2a7c7c"/>
+      <text x="115" y="298" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician narrates</text>
+      <text x="115" y="314" font-size="11" fill="white" text-anchor="middle">welcome screen</text>
+
+      <!-- RIGHT: Setup Welcome Screen STEP 0 -->
+      <rect x="330" y="272" width="200" height="72" rx="8" fill="#2a7c7c"/>
+      <text x="430" y="295" font-size="10" fill="#a7f3d0" text-anchor="middle">STEP 0</text>
+      <text x="430" y="312" font-size="11" font-weight="600" fill="white" text-anchor="middle">Setup Welcome</text>
+      <text x="430" y="328" font-size="11" fill="white" text-anchor="middle">Screen</text>
+
+      <!-- Dashed arrow LEFT→RIGHT -->
+      <line x1="230" y1="308" x2="328" y2="308" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-teal)"/>
+
+      <!-- Arrow: welcome → step 1 -->
+      <line x1="430" y1="344" x2="430" y2="374" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 4 — Calibration (y zone: 375–470) -->
+      <!-- ===================================================== -->
+
+      <!-- LEFT: Clinician watches level meter -->
+      <rect x="12" y="375" width="206" height="86" rx="8" fill="#2a7c7c"/>
+      <text x="115" y="400" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician watches</text>
+      <text x="115" y="416" font-size="11" fill="white" text-anchor="middle">live level meter</text>
+      <text x="115" y="432" font-size="11" fill="white" text-anchor="middle">via screen share</text>
+
+      <!-- RIGHT: STEP 1 — Microphone Check -->
+      <!-- Step badge circle -->
+      <circle cx="345" cy="390" r="12" fill="#1a5f5f"/>
+      <text x="345" y="394" font-size="10" font-weight="700" fill="white" text-anchor="middle">1</text>
+
+      <rect x="330" y="375" width="300" height="86" rx="8" fill="#2a7c7c"/>
+      <!-- Re-draw badge on top of box -->
+      <circle cx="348" cy="388" r="12" fill="#1a5f5f"/>
+      <text x="348" y="392" font-size="10" font-weight="700" fill="white" text-anchor="middle">1</text>
+      <text x="480" y="400" font-size="11" font-weight="700" fill="white" text-anchor="middle">STEP 1 — Microphone Check</text>
+      <text x="480" y="418" font-size="11" fill="white" text-anchor="middle">Patient says "ahhh" for 5 s</text>
+      <text x="480" y="435" font-size="11" fill="white" text-anchor="middle">Live level meter shown</text>
+      <text x="480" y="452" font-size="10" fill="#a7f3d0" text-anchor="middle">Clinician observes via screen share</text>
+
+      <!-- Dashed arrow from left col to step 1 box -->
+      <line x1="230" y1="418" x2="328" y2="418" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-teal)"/>
+
+      <!-- Arrow step 1 → quality decision diamond -->
+      <line x1="480" y1="461" x2="480" y2="493" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 5 — Quality OK? diamond (y zone: 493–590) -->
+      <!-- ===================================================== -->
+
+      <!-- Diamond centred at (480, 527): hw=60, hh=34 -->
+      <polygon points="480,493 548,527 480,561 412,527" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+      <text x="480" y="522" font-size="11" font-weight="600" fill="#374151" text-anchor="middle">Quality</text>
+      <text x="480" y="537" font-size="11" fill="#374151" text-anchor="middle">OK?</text>
+
+      <!-- NO branch (retry) — arrow left, up, back to Step 1 top-left -->
+      <line x1="412" y1="527" x2="295" y2="527" stroke="#ef4444" stroke-width="1.5"/>
+      <line x1="295" y1="527" x2="295" y2="375" stroke="#ef4444" stroke-width="1.5"/>
+      <line x1="295" y1="375" x2="328" y2="375" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr-red)"/>
+      <!-- NO label -->
+      <text x="355" y="520" font-size="10" font-weight="700" fill="#ef4444">NO</text>
+      <!-- Retry label badge -->
+      <rect x="262" y="440" width="52" height="22" rx="4" fill="#fee2e2"/>
+      <text x="288" y="455" font-size="10" font-weight="600" fill="#ef4444" text-anchor="middle">Retry</text>
+
+      <!-- YES branch (accept) — arrow down toward Step 2 -->
+      <line x1="480" y1="561" x2="480" y2="591" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-green)"/>
+      <!-- YES label -->
+      <text x="492" y="579" font-size="10" font-weight="700" fill="#059669">YES</text>
+      <!-- Accept badge -->
+      <rect x="506" y="555" width="52" height="22" rx="4" fill="#d1fae5"/>
+      <text x="532" y="570" font-size="10" font-weight="600" fill="#059669" text-anchor="middle">Accept</text>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 6 — Coach Voice (y zone: 591–685) -->
+      <!-- ===================================================== -->
+
+      <!-- LEFT: Clinician listens to samples -->
+      <rect x="12" y="594" width="206" height="80" rx="8" fill="#2a7c7c"/>
+      <text x="115" y="620" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician listens to</text>
+      <text x="115" y="636" font-size="11" fill="white" text-anchor="middle">samples &amp; directs</text>
+      <text x="115" y="652" font-size="11" fill="white" text-anchor="middle">choice</text>
+
+      <!-- RIGHT: STEP 2 -->
+      <rect x="330" y="594" width="300" height="80" rx="8" fill="#2a7c7c"/>
+      <circle cx="348" cy="607" r="12" fill="#1a5f5f"/>
+      <text x="348" y="611" font-size="10" font-weight="700" fill="white" text-anchor="middle">2</text>
+      <text x="480" y="620" font-size="11" font-weight="700" fill="white" text-anchor="middle">STEP 2 — Coach Voice</text>
+      <text x="480" y="638" font-size="11" fill="white" text-anchor="middle">Patient plays samples</text>
+      <text x="480" y="655" font-size="11" fill="white" text-anchor="middle">Clinician directs choice</text>
+
+      <!-- Dashed arrow left→right -->
+      <line x1="230" y1="634" x2="328" y2="634" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-teal)"/>
+
+      <!-- Arrow: Step 2 → Step 3 -->
+      <line x1="480" y1="674" x2="480" y2="704" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 7 — Coaching Level (y zone: 704–800) -->
+      <!-- ===================================================== -->
+
+      <!-- LEFT: Clinician directs coaching level -->
+      <rect x="12" y="706" width="206" height="80" rx="8" fill="#2a7c7c"/>
+      <text x="115" y="731" font-size="11" font-weight="600" fill="white" text-anchor="middle">Clinician directs</text>
+      <text x="115" y="747" font-size="11" fill="white" text-anchor="middle">coaching level</text>
+
+      <!-- RIGHT: STEP 3 -->
+      <rect x="330" y="706" width="300" height="80" rx="8" fill="#2a7c7c"/>
+      <circle cx="348" cy="719" r="12" fill="#1a5f5f"/>
+      <text x="348" y="723" font-size="10" font-weight="700" fill="white" text-anchor="middle">3</text>
+      <text x="480" y="732" font-size="11" font-weight="700" fill="white" text-anchor="middle">STEP 3 — Coaching Level</text>
+      <text x="480" y="750" font-size="11" fill="white" text-anchor="middle">Quiet / Standard / Encouraging</text>
+      <text x="480" y="768" font-size="11" fill="white" text-anchor="middle">Clinician directs selection</text>
+
+      <!-- Dashed arrow left→right -->
+      <line x1="230" y1="746" x2="328" y2="746" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-teal)"/>
+
+      <!-- Arrow: Step 3 → Confirmation -->
+      <line x1="480" y1="786" x2="480" y2="816" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+
+      <!-- ===================================================== -->
+      <!-- ROW 8 — Confirmation & End (y zone: 816–1010) -->
+      <!-- ===================================================== -->
+
+      <!-- Confirmation screen -->
+      <rect x="330" y="818" width="300" height="64" rx="8" fill="#1a5f5f"/>
+      <text x="480" y="845" font-size="12" font-weight="700" fill="white" text-anchor="middle">Confirmation Screen</text>
+      <text x="480" y="863" font-size="11" fill="#a7f3d0" text-anchor="middle">"All done! Setup complete."</text>
+
+      <!-- Arrow: Confirmation → Main app -->
+      <line x1="480" y1="882" x2="480" y2="912" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Patient opens main Say Ah app -->
+      <rect x="310" y="914" width="340" height="56" rx="8" fill="#1a5f5f"/>
+      <text x="480" y="938" font-size="12" font-weight="700" fill="white" text-anchor="middle">Patient opens Say Ah app</text>
+      <text x="480" y="955" font-size="11" fill="#a7f3d0" text-anchor="middle">Normal session begins</text>
+
+      <!-- Arrow → END pill -->
+      <line x1="480" y1="970" x2="480" y2="998" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="437" y="998" width="86" height="30" rx="15" fill="#374151"/>
+      <text x="480" y="1018" font-size="11" font-weight="700" fill="white" text-anchor="middle">END</text>
+
+
+      <!-- ===================================================== -->
+      <!-- RE-CALIBRATION SIDE BOX (right of Step 1, y: 380–600) -->
+      <!-- ===================================================== -->
+
+      <!-- Amber box -->
+      <rect x="695" y="378" width="192" height="190" rx="9" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>
+      <text x="791" y="400" font-size="11" font-weight="700" fill="#b45309" text-anchor="middle">RE-CALIBRATION</text>
+      <text x="791" y="418" font-size="10" fill="#78350f" text-anchor="middle">If mic changes during a later</text>
+      <text x="791" y="432" font-size="10" fill="#78350f" text-anchor="middle">session:</text>
+      <text x="791" y="452" font-size="10" fill="#78350f" text-anchor="middle">① Small indicator appears</text>
+      <text x="791" y="470" font-size="10" fill="#78350f" text-anchor="middle">in main app</text>
+      <text x="791" y="490" font-size="10" fill="#78350f" text-anchor="middle">② Clinician directs patient</text>
+      <text x="791" y="506" font-size="10" fill="#78350f" text-anchor="middle">to /setup</text>
+      <text x="791" y="526" font-size="10" fill="#78350f" text-anchor="middle">③ Step 1 only — re-runs</text>
+      <text x="791" y="542" font-size="10" fill="#78350f" text-anchor="middle">calibration</text>
+
+      <!-- Dashed amber arrow from recal box left edge → Step 1 right edge -->
+      <!-- Recal box left edge at x=695, mid-y ≈ 473. Step 1 right edge at x=630, mid-y=418 -->
+      <path d="M 695,473 Q 660,473 660,418 L 632,418" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arr-amber)"/>
+      <text x="663" y="445" font-size="9" fill="#b45309" font-style="italic" text-anchor="middle">re-enter</text>
+      <text x="663" y="456" font-size="9" fill="#b45309" font-style="italic" text-anchor="middle">Step 1</text>
+
+    </svg>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-title">Legend</div>
+
+    <div class="legend-item">
+      <div class="legend-box" style="background:#2a7c7c;"></div>
+      Patient device screen / state
+    </div>
+    <div class="legend-item">
+      <div class="legend-box" style="background:#1a5f5f;"></div>
+      Completion screens (dark teal)
+    </div>
+    <div class="legend-item">
+      <div style="width:36px; height:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <svg width="36" height="20"><polygon points="18,2 34,10 18,18 2,10" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/></svg>
+      </div>
+      Decision point
+    </div>
+    <div class="legend-item">
+      <div class="legend-box" style="background:#ecfdf5; border:1.5px solid #059669;"></div>
+      Returning-visitor fast path
+    </div>
+    <div class="legend-item">
+      <div class="legend-box" style="background:#fff7ed; border:1.5px solid #f59e0b;"></div>
+      Re-calibration branch
+    </div>
+    <div class="legend-item">
+      <svg width="48" height="14" style="flex-shrink:0;">
+        <defs>
+          <marker id="leg-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#374151"/>
+          </marker>
+        </defs>
+        <line x1="0" y1="7" x2="38" y2="7" stroke="#374151" stroke-width="1.5" marker-end="url(#leg-arr)"/>
+      </svg>
+      Patient flow
+    </div>
+    <div class="legend-item">
+      <svg width="48" height="14" style="flex-shrink:0;">
+        <defs>
+          <marker id="leg-arr-t" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#2a7c7c"/>
+          </marker>
+        </defs>
+        <line x1="0" y1="7" x2="38" y2="7" stroke="#2a7c7c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#leg-arr-t)"/>
+      </svg>
+      Clinician involvement (via video)
+    </div>
+    <div class="legend-item">
+      <svg width="48" height="14" style="flex-shrink:0;">
+        <defs>
+          <marker id="leg-arr-r" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#ef4444"/>
+          </marker>
+        </defs>
+        <line x1="0" y1="7" x2="38" y2="7" stroke="#ef4444" stroke-width="1.5" marker-end="url(#leg-arr-r)"/>
+      </svg>
+      Retry path (NO branch)
+    </div>
+  </div>
+</main>
+
+<footer>Draft for team review — May 2026 — not final design</footer>
+
+</body>
+</html>

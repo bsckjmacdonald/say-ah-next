@@ -31,6 +31,12 @@ export type FeedbackCategory =
 
 export interface FeedbackResult {
   spoken: string;
+  /**
+   * Short personalized one-liner (name + the rep's actual seconds) for TTS —
+   * synthesizes fast enough to play in the chosen voice before the fallback
+   * budget. The richer `spoken`/`display` text still shows on screen.
+   */
+  spokenShort: string;
   display: string;
   tip: string | null;
 }

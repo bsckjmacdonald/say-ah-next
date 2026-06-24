@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { TOTAL_REPS } from "@/lib/constants";
 import { ProgressBar } from "@/components/ProgressBar";
 import { CoachToggle } from "@/components/CoachToggle";
+import { coachVoice } from "@/lib/coachVoice";
+import { loadCoachVoice, loadCoachingLevel } from "@/lib/storage";
 
 interface Props {
   currentRep: number;
@@ -19,6 +22,14 @@ export function PreRepScreen({
   onCoachToggle,
   onStart,
 }: Props) {
+  // Warm the static coach audio (cues + post-rep fallback) for the chosen voice
+  // so it's fetched/decoded before the rep needs it. These are small static
+  // files — no model or synthesis involved, so cues reliably come through.
+  useEffect(() => {
+    if (!coachEnabled || loadCoachingLevel() === "minimal") return;
+    coachVoice.setVoice(loadCoachVoice());
+    void coachVoice.prefetchStatic();
+  }, [coachEnabled]);
   return (
     <div className="screen pre-rep-screen">
       <ProgressBar currentRep={currentRep} />
