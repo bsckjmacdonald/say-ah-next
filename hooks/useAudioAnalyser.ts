@@ -485,21 +485,13 @@ export function useAudioAnalyser({
 
   const stop = useCallback(() => {
     const r = repRef.current;
-    if (!r.onsetDetected) {
-      stopLoop();
-      setTimeout(() => {
-        if (analyserRef.current && onCompleteRef.current) {
-          repRef.current = freshAccumulator();
-          runLoop();
-        }
-      }, 300);
-      return;
-    }
-    if (r.onsetTime !== null) {
-      const duration = (Date.now() - r.onsetTime) / 1000;
-      finishRep(duration);
-    }
-  }, [finishRep, runLoop, stopLoop]);
+    // Always finalize the rep, even if voice was never detected (the timer
+    // never started). With no onset, onsetTime is null → a 0-second rep, so
+    // "Done" can't appear dead before the patient has spoken.
+    const duration =
+      r.onsetTime !== null ? (Date.now() - r.onsetTime) / 1000 : 0;
+    finishRep(duration);
+  }, [finishRep]);
 
   const isReady = useCallback(() => mediaStreamRef.current !== null, []);
 

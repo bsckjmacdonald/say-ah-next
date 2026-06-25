@@ -267,6 +267,12 @@ function CalibrateStep({ onDone }: { onDone: () => void }) {
 // The preview phrase is pre-rendered per voice at build time; see SAMPLE_PHRASE
 // in scripts/generate-coach-audio.mjs.
 
+// Voice labels look like "Heart (warm female)" — split the name from the
+// parenthetical descriptor so each can be styled (and wrapped) on its own.
+const voiceName = (label: string) => label.replace(/\s*\(.*$/, "").trim();
+const voiceDesc = (label: string) =>
+  label.match(/\(([^)]*)\)/)?.[1]?.trim() ?? "";
+
 function VoiceStep({ onDone }: { onDone: () => void }) {
   const [selected, setSelected] = useState<CoachVoiceId>(DEFAULT_COACH_VOICE);
   const [playing, setPlaying] = useState<CoachVoiceId | null>(null);
@@ -335,9 +341,17 @@ function VoiceStep({ onDone }: { onDone: () => void }) {
           >
             {!ready ? "Loading…" : playing === v.id ? "▶ Playing…" : "▶ Play"}
           </button>
-          <span style={{ flex: 1 }}>{v.label}</span>
+          <span style={s.voiceLabel}>
+            <span style={s.voiceName}>{voiceName(v.label)}</span>
+            {voiceDesc(v.label) && (
+              <span style={s.voiceDesc}>{voiceDesc(v.label)}</span>
+            )}
+          </span>
           <button
-            style={selected === v.id ? s.btnChosen : s.btnSecondary}
+            style={{
+              ...(selected === v.id ? s.btnChosen : s.btnSecondary),
+              ...s.voiceBtn,
+            }}
             onClick={() => setSelected(v.id)}
           >
             {selected === v.id ? "✓ Chosen" : "Choose"}
@@ -412,7 +426,7 @@ function DoneStep() {
 // ── Styles ──────────────────────────────────────────────────────────────────
 const s: Record<string, React.CSSProperties> = {
   main: {
-    maxWidth: 560,
+    maxWidth: 680,
     margin: "0 auto",
     padding: "32px 20px",
     fontFamily: "system-ui, -apple-system, sans-serif",
@@ -435,23 +449,27 @@ const s: Record<string, React.CSSProperties> = {
     textDecoration: "none",
   },
   btnSecondary: {
+    flexShrink: 0,
     background: "#f3f4f6",
     color: "#333",
     border: "1px solid #d1d5db",
     borderRadius: 8,
-    padding: "10px 18px",
+    padding: "8px 14px",
     fontSize: 14,
     cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   btnChosen: {
+    flexShrink: 0,
     background: "#2a7c7c",
     color: "#fff",
     border: "1px solid #2a7c7c",
     borderRadius: 8,
-    padding: "10px 18px",
+    padding: "8px 14px",
     fontSize: 14,
     cursor: "pointer",
     fontWeight: 600,
+    whiteSpace: "nowrap",
   },
   captureBox: { textAlign: "center", padding: "24px 0" },
   countdown: { fontSize: 64, fontWeight: 800, color: "#2a7c7c" },
@@ -460,30 +478,47 @@ const s: Record<string, React.CSSProperties> = {
   voiceRow: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
-    padding: "12px 14px",
+    gap: 10,
+    padding: "10px 12px",
     marginBottom: 8,
     background: "#fafafa",
     border: "2px solid #e5e7eb",
     borderRadius: 8,
   },
+  voiceLabel: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    gap: 1,
+    lineHeight: 1.3,
+  },
+  voiceName: { fontSize: 15, fontWeight: 700, color: "#111" },
+  voiceDesc: { fontSize: 12, color: "#6b7280" },
+  // Compact override so the Choose/Chosen pill stays small and never crowds the
+  // voice name (the base btnSecondary/btnChosen styles are larger and shared).
+  voiceBtn: { padding: "6px 10px", fontSize: 13, borderRadius: 6 },
   btnPlay: {
+    flexShrink: 0,
     background: "#e0f2f2",
     color: "#2a7c7c",
     border: "1px solid #a7d4d4",
     borderRadius: 6,
-    padding: "7px 14px",
+    padding: "6px 10px",
     fontSize: 13,
     cursor: "pointer",
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
   btnPlayOn: {
+    flexShrink: 0,
     background: "#2a7c7c",
     color: "#fff",
     border: "1px solid #2a7c7c",
     borderRadius: 6,
-    padding: "7px 14px",
+    padding: "6px 10px",
     fontSize: 13,
     cursor: "pointer",
     fontWeight: 600,

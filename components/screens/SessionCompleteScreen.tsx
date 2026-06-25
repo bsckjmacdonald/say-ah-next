@@ -1,6 +1,7 @@
 "use client";
 
 import { ResultsChart } from "@/components/ResultsChart";
+import { ClinicianSettingsBadge } from "@/components/ClinicianSettingsBadge";
 import { formatMinutesSeconds } from "@/lib/format";
 
 interface Props {
@@ -21,6 +22,7 @@ export function SessionCompleteScreen({
   const totalSpeakingTime = durations.reduce((a, b) => a + b, 0);
   return (
     <div className="screen session-complete-screen">
+      <ClinicianSettingsBadge />
       <h2>Session Complete!</h2>
       <p className="session-summary-message">{summaryMessage}</p>
       <ResultsChart durations={durations} />
