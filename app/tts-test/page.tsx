@@ -15,10 +15,10 @@ const PHRASES = [
 ];
 
 const KOKORO_VOICES = [
-  { id: "af_heart",   label: "Heart — warm female (grade A)" },
-  { id: "af_bella",   label: "Bella — energetic female (grade A−)" },
-  { id: "bf_emma",    label: "Emma — British female (grade B−)" },
-  { id: "am_michael", label: "Michael — calm male (grade C+)" },
+  { id: "af_heart",   label: "Heart — warm female" },
+  { id: "af_bella",   label: "Bella — energetic female" },
+  { id: "bf_emma",    label: "Emma — British female" },
+  { id: "am_michael", label: "Michael — calm male" },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

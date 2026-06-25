@@ -2,6 +2,7 @@
 
 import { TOTAL_REPS } from "@/lib/constants";
 import { CoachToggle } from "@/components/CoachToggle";
+import { ClinicianSettingsBadge } from "@/components/ClinicianSettingsBadge";
 
 interface Props {
   userName: string;
@@ -22,6 +23,7 @@ export function WelcomeScreen({
 }: Props) {
   return (
     <div className="screen welcome-screen">
+      <ClinicianSettingsBadge />
       <button
         type="button"
         className="welcome-history-corner-link"

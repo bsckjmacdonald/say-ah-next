@@ -27,10 +27,10 @@ export type CoachVoiceId = "af_heart" | "af_bella" | "bf_emma" | "am_michael";
 export const DEFAULT_COACH_VOICE: CoachVoiceId = "af_heart";
 
 export const COACH_VOICES: { id: CoachVoiceId; label: string }[] = [
-  { id: "af_heart", label: "Heart — warm female (A)" },
-  { id: "af_bella", label: "Bella — energetic female (A−)" },
-  { id: "bf_emma", label: "Emma — British female (B−)" },
-  { id: "am_michael", label: "Michael — calm male (C+)" },
+  { id: "af_heart", label: "Heart (warm female)" },
+  { id: "af_bella", label: "Bella (energetic female)" },
+  { id: "bf_emma", label: "Emma (British female)" },
+  { id: "am_michael", label: "Michael (calm male)" },
 ];
 
 // Energy boost applied to ALL coach audio at playback (Kokoro can't adjust

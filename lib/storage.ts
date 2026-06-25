@@ -107,6 +107,18 @@ export function saveSetupComplete(value: boolean): void {
   window.localStorage.setItem(SETUP_COMPLETE_KEY, String(value));
 }
 
+/**
+ * Wipe everything the clinician /setup flow saved on this device — voice,
+ * coaching verbosity, and the setup-complete flag — so the app falls back to
+ * its defaults. Used by the "Clear clinician settings" badge.
+ */
+export function clearClinicianSettings(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(COACH_VOICE_KEY);
+  window.localStorage.removeItem(COACHING_LEVEL_KEY);
+  window.localStorage.removeItem(SETUP_COMPLETE_KEY);
+}
+
 /** Returns the calibrated offset for this deviceId, or `fallback` if uncalibrated. */
 export function loadDeviceOffset(deviceId: string, fallback: number): number {
   if (typeof window === "undefined") return fallback;
